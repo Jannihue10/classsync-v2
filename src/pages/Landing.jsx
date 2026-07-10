@@ -1,0 +1,180 @@
+import { useTheme } from "../context/ThemeContext";
+import { radius } from "../styles/theme";
+
+const APP_URL = "https://app.classsync.de";
+
+const FEATURES = [
+  { icon: "📂", title: "Materialien teilen", text: "Mitschriften, HA-Lösungen, Lernzettel und Aufgabenblätter – als PDF, Bild oder Notiz. Für den ganzen Kurs, in Sekunden." },
+  { icon: "🗓️", title: "Stundenplan", text: "Baut sich automatisch aus den Kurszeiten auf. Ein Klick auf die Stunde bringt dich direkt zu den Materialien." },
+  { icon: "📝", title: "Hausaufgaben", text: "Einmal eingetragen, sieht sie der ganze Kurs. Jeder hakt für sich ab – nichts geht mehr unter." },
+  { icon: "🎯", title: "Prüfungs-Countdown", text: "Alle Klausuren mit Live-Countdown. Rot, gelb, grün – du siehst sofort, was als Nächstes ansteht." },
+  { icon: "💬", title: "Kurs-Chat", text: "Ein eigener Chat pro Kurs. Fragen stellen, Antworten bekommen – ohne die Klassengruppe zu fluten." },
+  { icon: "🔔", title: "Benachrichtigungen", text: "Neue Materialien seit deinem letzten Besuch, übersichtlich nach Kurs gruppiert." },
+];
+
+const STEPS = [
+  { nr: "1", title: "Klasse erstellen", text: "Registriere dich kostenlos und erstelle deine Klasse. Du bekommst einen 5-stelligen Zugangscode." },
+  { nr: "2", title: "Mitschüler einladen", text: "Teile den Code – alle treten in Sekunden bei und wählen ihre Kurse." },
+  { nr: "3", title: "Alles teilen", text: "Mitschriften hochladen, Hausaufgaben eintragen, Prüfungen planen. Fertig." },
+];
+
+export default function Landing() {
+  const { t } = useTheme();
+
+  return (
+    <div style={{ background: t.bg, color: t.text, minHeight: "100vh" }}>
+      {/* Sticky Nav */}
+      <nav
+        style={{
+          position: "sticky", top: 0, zIndex: 100,
+          background: `${t.surface}e6`, backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${t.border}`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1080, margin: "0 auto", padding: "12px 20px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div
+              style={{
+                width: 34, height: 34, borderRadius: 9,
+                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
+              }}
+            >
+              🎒
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.4 }}>ClassSync</span>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <a href={APP_URL} style={btnStyle(t, "ghost")}>Anmelden</a>
+            <a href={`${APP_URL}?register=true`} style={btnStyle(t, "primary")}>Kostenlos starten</a>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <header style={{ maxWidth: 860, margin: "0 auto", padding: "88px 20px 72px", textAlign: "center" }}>
+        <div
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 14px",
+            borderRadius: 999, background: t.accentSoft, color: t.accent,
+            fontSize: 12.5, fontWeight: 700, marginBottom: 22,
+          }}
+        >
+          ✨ Kostenlos für Schüler
+        </div>
+        <h1 style={{ margin: 0, fontSize: "clamp(32px, 6vw, 54px)", fontWeight: 800, letterSpacing: -1.5, lineHeight: 1.1 }}>
+          Alles für deine Klasse.
+          <br />
+          <span
+            style={{
+              background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
+              WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+            }}
+          >
+            An einem Ort.
+          </span>
+        </h1>
+        <p style={{ margin: "22px auto 0", maxWidth: 560, fontSize: 17, color: t.textMuted, lineHeight: 1.6 }}>
+          Mitschriften, Hausaufgaben, Lernzettel und Prüfungstermine – teile Unterrichtsmaterial
+          mit deiner Klasse, organisiert nach Kursen und Stundenplan.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 34, flexWrap: "wrap" }}>
+          <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "13px 28px", fontSize: 15 }}>
+            Kostenlos starten →
+          </a>
+          <a href={APP_URL} style={{ ...btnStyle(t, "ghost"), padding: "13px 28px", fontSize: 15 }}>
+            Ich habe schon ein Konto
+          </a>
+        </div>
+        <p style={{ marginTop: 18, fontSize: 12.5, color: t.textFaint }}>
+          Läuft im Browser · Installierbar auf iPad & Handy · Keine Werbung
+        </p>
+      </header>
+
+      {/* Features */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "20px 20px 70px" }}>
+        <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 36px" }}>
+          Alles, was deine Klasse braucht
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              style={{
+                background: t.surface, border: `1px solid ${t.border}`, borderRadius: radius.lg,
+                padding: "24px 22px", boxShadow: t.shadow,
+              }}
+            >
+              <div style={{ fontSize: 30, marginBottom: 12 }}>{f.icon}</div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 16.5, fontWeight: 800 }}>{f.title}</h3>
+              <p style={{ margin: 0, fontSize: 14, color: t.textMuted, lineHeight: 1.6 }}>{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3 Schritte */}
+      <section style={{ background: t.surface, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "60px 20px" }}>
+          <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 36px" }}>
+            In 3 Schritten startklar
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 24 }}>
+            {STEPS.map((s) => (
+              <div key={s.nr} style={{ textAlign: "center", padding: "0 10px" }}>
+                <div
+                  style={{
+                    width: 46, height: 46, borderRadius: 999, margin: "0 auto 14px",
+                    background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 19, fontWeight: 800,
+                  }}
+                >
+                  {s.nr}
+                </div>
+                <h3 style={{ margin: "0 0 8px", fontSize: 16.5, fontWeight: 800 }}>{s.title}</h3>
+                <p style={{ margin: 0, fontSize: 14, color: t.textMuted, lineHeight: 1.6 }}>{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "70px 20px", textAlign: "center" }}>
+        <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 14px" }}>
+          Bereit für entspanntere Schultage?
+        </h2>
+        <p style={{ margin: "0 0 28px", fontSize: 15.5, color: t.textMuted }}>
+          Erstelle deine Klasse in unter einer Minute – kostenlos.
+        </p>
+        <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "14px 32px", fontSize: 15.5 }}>
+          Jetzt kostenlos starten →
+        </a>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ borderTop: `1px solid ${t.border}`, padding: "26px 20px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
+          🎒 ClassSync · Von Schülern, für Schüler · {new Date().getFullYear()}
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+function btnStyle(t, variant) {
+  const base = {
+    display: "inline-block", padding: "9px 18px", borderRadius: radius.sm,
+    fontSize: 13.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
+  };
+  if (variant === "primary") {
+    return { ...base, background: t.accent, color: t.accentText, boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+  }
+  return { ...base, background: "transparent", color: t.text, border: `1px solid ${t.borderStrong}` };
+}

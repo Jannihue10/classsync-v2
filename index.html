@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ClassSync</title>
+    <meta name="description" content="Alles für deine Klasse. An einem Ort. Mitschriften, Hausaufgaben, Lernzettel und mehr – teile Unterrichtsmaterial mit deiner Klasse." />
+    <meta name="theme-color" content="#111111" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ClassSync" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body, #root { margin: 0; padding: 0; height: 100%; }
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      button, input, textarea, select { font-family: inherit; font-size: inherit; }
+      a { color: inherit; }
+      input[type="date"] { -webkit-appearance: none; appearance: none; }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-thumb { background: rgba(128,128,128,.35); border-radius: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      @keyframes cs-spin { to { transform: rotate(360deg); } }
+      @keyframes cs-fadein { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes cs-slideup { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes cs-slidein-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+      @keyframes cs-slidein-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

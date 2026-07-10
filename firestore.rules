@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function me() {
+      return get(/databases/$(database)/documents/users/$(uid())).data;
+    }
+    function isMember(klasseId) {
+      return isAuth() && me().klasseId == klasseId;
+    }
+    function isKlassenAdmin(klasseId) {
+      return isMember(klasseId) &&
+        uid() in get(/databases/$(database)/documents/klassen/$(klasseId)).data.adminIds;
+    }
+    // Kurs-Admin = Ersteller des Kurses
+    function isKursAdmin(klasseId, kursId) {
+      return isMember(klasseId) &&
+        get(/databases/$(database)/documents/klassen/$(klasseId)/kurse/$(kursId)).data.erstellerId == uid();
+    }
+
+    match /users/{userId} {
+      // Lesen: sich selbst oder Mitglieder der eigenen Klasse
+      allow read: if isAuth() && (
+        uid() == userId ||
+        (resource.data.klasseId != null && me().klasseId == resource.data.klasseId)
+      );
+      allow create: if isAuth() && uid() == userId;
+      allow update: if isAuth() && uid() == userId;
+      allow delete: if false;
+    }
+
+    match /klassen/{klasseId} {
+      // Lesen für alle eingeloggten User (nötig für Beitritt per Code-Query)
+      allow read: if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.adminIds is list &&
+        uid() in request.resource.data.adminIds;
+      allow update: if isAuth() && uid() in resource.data.adminIds;
+      allow delete: if isAuth() && uid() in resource.data.adminIds;
+
+      match /kurse/{kursId} {
+        allow read: if isAuth();
+        // Jedes Klassenmitglied darf Kurse erstellen (wird Kurs-Admin, einziges Mitglied)
+        allow create: if isMember(klasseId) &&
+          request.resource.data.erstellerId == uid() &&
+          request.resource.data.memberIds == [uid()];
+        // Bearbeiten: Klassen-Admin, Kurs-Ersteller – oder jedes Mitglied, aber
+        // nur das memberIds-Feld (Selbst-Beitritt/-Austritt über Kurswahl)
+        allow update: if isMember(klasseId) && (
+          isKlassenAdmin(klasseId) ||
+          resource.data.erstellerId == uid() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        );
+        allow delete: if isKlassenAdmin(klasseId) ||
+          (isMember(klasseId) && resource.data.erstellerId == uid());
+
+        match /materialien/{matId} {
+          allow read: if isMember(klasseId);
+          allow create: if isMember(klasseId) &&
+            request.resource.data.autorId == uid();
+          // Likes darf jedes Mitglied togglen, alles andere nur Autor/Admin
+          allow update: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) ||
+            resource.data.autorId == uid() ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+          );
+          // Löschen: Autor, Klassen-Admin oder Kurs-Admin (Rechte-Matrix + Lösch-Kaskade)
+          allow delete: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) ||
+            isKursAdmin(klasseId, kursId) ||
+            resource.data.autorId == uid()
+          );
+        }
+
+        match /hausaufgaben/{haId} {
+          allow read: if isMember(klasseId);
+          allow create: if isMember(klasseId) &&
+            request.resource.data.autorId == uid();
+          // doneBy/hiddenBy darf jedes Mitglied ändern, alles andere nur Autor/Admin
+          allow update: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) ||
+            resource.data.autorId == uid() ||
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['doneBy', 'hiddenBy'])
+          );
+          // Kurs-Admin nur für die Lösch-Kaskade beim Kurs-Löschen
+          allow delete: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) ||
+            isKursAdmin(klasseId, kursId) ||
+            resource.data.autorId == uid()
+          );
+        }
+
+        match /pruefungen/{prId} {
+          allow read: if isMember(klasseId);
+          allow create: if isMember(klasseId) &&
+            request.resource.data.autorId == uid();
+          allow update: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) || resource.data.autorId == uid()
+          );
+          allow delete: if isMember(klasseId) && (
+            isKlassenAdmin(klasseId) ||
+            isKursAdmin(klasseId, kursId) ||
+            resource.data.autorId == uid()
+          );
+        }
+
+        match /chat/{msgId} {
+          allow read: if isMember(klasseId);
+          allow create: if isMember(klasseId) &&
+            request.resource.data.autorId == uid();
+          allow update: if false;
+          // Einzelne Nachrichten kann niemand über die UI löschen –
+          // delete brauchen aber Klassen-/Kurs-Admin für die Lösch-Kaskade (Kurs/Klasse löschen)
+          allow delete: if isKlassenAdmin(klasseId) || isKursAdmin(klasseId, kursId);
+        }
+      }
+    }
+  }
+}
