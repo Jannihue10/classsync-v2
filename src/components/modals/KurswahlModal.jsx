@@ -50,7 +50,7 @@ export default function KurswahlModal({ onClose }) {
     <Modal width={560} onClose={busy ? undefined : onClose}>
       <ModalHeader
         title="Kurse wählen"
-        subtitle="Wähle die Kurse, die du besuchst – sie erscheinen in deiner Sidebar und im Stundenplan."
+        subtitle="Wähle die Kurse, die du besuchst – sie erscheinen in deiner Sidebar und im Kalender."
         onClose={busy ? undefined : onClose}
       />
 

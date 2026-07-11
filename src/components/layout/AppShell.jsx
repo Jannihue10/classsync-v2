@@ -10,7 +10,6 @@ import KurswahlModal from "../modals/KurswahlModal";
 import KursFormModal from "../modals/KursFormModal";
 import { IconButton } from "../ui/UI";
 import UebersichtPage from "../../pages/UebersichtPage";
-import StundenplanPage from "../../pages/StundenplanPage";
 import KalenderPage from "../../pages/KalenderPage";
 import KursPage from "../../pages/KursPage";
 import ProfilPage from "../../pages/ProfilPage";
@@ -77,8 +76,9 @@ export default function AppShell() {
         <main style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           <Routes>
             <Route path="/" element={<UebersichtPage />} />
-            <Route path="/stundenplan" element={<StundenplanPage />} />
             <Route path="/kalender" element={<KalenderPage />} />
+            {/* Alter Menüpunkt zusammengelegt – Bookmarks weiterleiten */}
+            <Route path="/stundenplan" element={<Navigate to="/kalender" replace />} />
             <Route path="/kurs/:kursId" element={<KursPage />} />
             <Route path="/profil" element={<ProfilPage onOpenKurswahl={() => setKurswahlOpen(true)} />} />
             <Route path="*" element={<Navigate to="/" replace />} />

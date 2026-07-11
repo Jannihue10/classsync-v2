@@ -71,9 +71,6 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         <NavLink to="/" end style={navItemStyle} onClick={onNavigate}>
           <span style={{ fontSize: 15 }}>🏠</span> Übersicht
         </NavLink>
-        <NavLink to="/stundenplan" style={navItemStyle} onClick={onNavigate}>
-          <span style={{ fontSize: 15 }}>🗓️</span> Stundenplan
-        </NavLink>
         <NavLink to="/kalender" style={navItemStyle} onClick={onNavigate}>
           <span style={{ fontSize: 15 }}>📅</span> Kalender
         </NavLink>
