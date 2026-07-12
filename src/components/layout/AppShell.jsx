@@ -63,6 +63,10 @@ export default function AppShell() {
           <header
             style={{
               display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
+              // Safe-Area (Statusleiste / Notch) berücksichtigen
+              paddingTop: "calc(10px + env(safe-area-inset-top))",
+              paddingLeft: "calc(12px + env(safe-area-inset-left))",
+              paddingRight: "calc(12px + env(safe-area-inset-right))",
               borderBottom: `1px solid ${t.border}`, background: t.surface, flexShrink: 0,
             }}
           >
@@ -79,7 +83,16 @@ export default function AppShell() {
           </header>
         )}
 
-        <main style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <main
+          style={{
+            flex: 1, overflowY: "auto", minHeight: 0,
+            // Desktop/iPad: kein Mobile-Header -> Statusleisten-Abstand hier;
+            // Mobile: Header übernimmt den Top-Abstand. Seiten-Insets fürs Querformat.
+            paddingTop: isMobile ? 0 : "env(safe-area-inset-top)",
+            paddingLeft: isMobile ? "env(safe-area-inset-left)" : 0,
+            paddingRight: "env(safe-area-inset-right)",
+          }}
+        >
           <Routes>
             <Route path="/" element={<UebersichtPage />} />
             <Route path="/kalender" element={<KalenderPage />} />

@@ -39,6 +39,10 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
+        // Safe-Area: Statusleiste oben, Home-Indikator unten, Notch links (Querformat)
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
       }}
     >
       {/* Kopf: Logo + Klassenname */}

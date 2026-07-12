@@ -36,6 +36,7 @@ export default function Landing() {
         <div
           style={{
             maxWidth: 1080, margin: "0 auto", padding: "12px 20px",
+            paddingTop: "calc(12px + env(safe-area-inset-top))",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}
         >

@@ -22,7 +22,10 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
         onClick={toggle}
         title="Design wechseln"
         style={{
-          position: "fixed", top: 14, right: 14, background: t.surface,
+          position: "fixed",
+          top: "calc(14px + env(safe-area-inset-top))",
+          right: "calc(14px + env(safe-area-inset-right))",
+          background: t.surface,
           border: `1px solid ${t.border}`, borderRadius: radius.full,
           width: 38, height: 38, cursor: "pointer", color: t.textMuted,
           display: "flex", alignItems: "center", justifyContent: "center",
