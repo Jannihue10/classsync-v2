@@ -42,7 +42,6 @@ export function NotificationProvider({ children }) {
               kursId: kurs.id,
               kursName: kurs.name,
               farbe: kurs.farbe,
-              icon: kurs.icon,
               typ: data.typ,
               titel: data.titel,
               autor: data.autor,
@@ -72,7 +71,7 @@ export function NotificationProvider({ children }) {
       if (!byKurs.has(item.kursId)) {
         byKurs.set(item.kursId, {
           kursId: item.kursId, kursName: item.kursName,
-          farbe: item.farbe, icon: item.icon, items: [],
+          farbe: item.farbe, items: [],
         });
       }
       byKurs.get(item.kursId).items.push(item);

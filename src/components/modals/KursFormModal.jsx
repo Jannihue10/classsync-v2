@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Palette, Plus, X } from "lucide-react";
 import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import CourseAvatar from "../ui/CourseAvatar";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
@@ -20,7 +22,6 @@ export default function KursFormModal({ kurs, onClose }) {
   const [lehrer, setLehrer] = useState(kurs?.lehrer || "");
   const [raum, setRaum] = useState(kurs?.raum || "");
   const [farbe, setFarbe] = useState(kurs?.farbe || KURS_FARBEN[0]);
-  const [icon, setIcon] = useState(kurs?.icon || "📚");
   const [zeiten, setZeiten] = useState(
     kurs?.zeiten?.length ? kurs.zeiten : [{ day: "Mo", zeit: "08:00", zeitEnde: "09:30" }]
   );
@@ -32,7 +33,6 @@ export default function KursFormModal({ kurs, onClose }) {
     if (!vorlage) return;
     setName(vorlage.name);
     setFarbe(vorlage.farbe);
-    setIcon(vorlage.icon);
   }
 
   function updateZeit(index, field, value) {
@@ -55,7 +55,6 @@ export default function KursFormModal({ kurs, onClose }) {
         raum: raum.trim(),
         zeiten,
         farbe,
-        icon: icon.trim() || "📚",
       };
       if (editMode) {
         await updateDoc(doc(db, "klassen", klasse.id, "kurse", kurs.id), fields);
@@ -94,30 +93,27 @@ export default function KursFormModal({ kurs, onClose }) {
               Fächervorlage (optional)
             </span>
             <select defaultValue="" onChange={applyVorlage} style={{ ...selectStyle, width: "100%" }}>
-              <option value="" disabled>Vorlage wählen – setzt Name, Farbe & Icon…</option>
+              <option value="" disabled>Vorlage wählen – setzt Name & Farbe…</option>
               {FACH_VORLAGEN.map((v) => (
-                <option key={v.name} value={v.name}>{v.icon} {v.name}</option>
+                <option key={v.name} value={v.name}>{v.name}</option>
               ))}
             </select>
           </label>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "end" }}>
-          <Input
-            label="Icon"
-            value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-            maxLength={4}
-            style={{ textAlign: "center", fontSize: 18, padding: "8px 4px" }}
-          />
-          <Input
-            label="Kursname"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="z. B. Mathematik LK"
-            maxLength={40}
-          />
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+          {/* Live-Vorschau des Monogramms (ergibt sich aus Name + Farbe) */}
+          <CourseAvatar name={name || "?"} farbe={farbe} size={40} radius={10} style={{ marginBottom: 1 }} />
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Kursname"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="z. B. Mathematik LK"
+              maxLength={40}
+            />
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -150,7 +146,7 @@ export default function KursFormModal({ kurs, onClose }) {
                 background: KURS_FARBEN.includes(farbe) ? "transparent" : farbe,
               }}
             >
-              🎨
+              <Palette size={13} strokeWidth={1.8} />
               <input
                 type="color"
                 value={farbe}
@@ -192,10 +188,11 @@ export default function KursFormModal({ kurs, onClose }) {
                   aria-label="Zeit entfernen"
                   style={{
                     background: "none", border: "none", cursor: zeiten.length === 1 ? "not-allowed" : "pointer",
-                    color: zeiten.length === 1 ? t.textFaint : t.danger, fontSize: 15, padding: 4,
+                    color: zeiten.length === 1 ? t.textFaint : t.danger, padding: 4,
+                    display: "flex", alignItems: "center",
                   }}
                 >
-                  ✕
+                  <X size={15} strokeWidth={2} />
                 </button>
               </div>
             ))}
@@ -206,10 +203,11 @@ export default function KursFormModal({ kurs, onClose }) {
             style={{
               marginTop: 8, background: "none", border: `1px dashed ${t.borderStrong}`,
               borderRadius: radius.sm, padding: "7px 12px", color: t.textMuted,
-              fontSize: 12.5, fontWeight: 600, cursor: "pointer", width: "100%",
+              fontSize: 12.5, fontWeight: 500, cursor: "pointer", width: "100%",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            + Weitere Stunde
+            <Plus size={13} strokeWidth={2} /> Weitere Stunde
           </button>
         </div>
 

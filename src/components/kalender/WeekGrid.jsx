@@ -93,7 +93,7 @@ export default function WeekGrid({ kurse, dates, pruefungenByISO }) {
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}
                 >
-                  🎯 {pr.titel}
+                  {pr.titel}
                 </div>
               ))}
             </div>
@@ -173,11 +173,11 @@ export default function WeekGrid({ kurse, dates, pruefungenByISO }) {
                   >
                     <span
                       style={{
-                        fontSize: 11.5, fontWeight: 800, color: t.text, lineHeight: 1.25,
+                        fontSize: 11.5, fontWeight: 700, color: t.text, lineHeight: 1.25,
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}
                     >
-                      {b.kurs.icon} {b.kurs.name}
+                      {b.kurs.name}
                     </span>
                     <span style={{ fontSize: 10, color: t.textMuted, whiteSpace: "nowrap" }}>
                       {String(Math.floor(b.start / 60)).padStart(2, "0")}:{String(b.start % 60).padStart(2, "0")}

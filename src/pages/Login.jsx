@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MailCheck } from "lucide-react";
 import { useAuth, authErrorText } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { Btn, Input } from "../components/ui/UI";
@@ -44,7 +45,15 @@ export default function Login({ onSwitchToRegister }) {
       <AuthLayout title="Passwort zurücksetzen" subtitle="Wir senden dir einen Link zum Zurücksetzen.">
         {resetSent ? (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 34, marginBottom: 12 }}>📬</div>
+            <span
+              style={{
+                width: 46, height: 46, borderRadius: 999, margin: "0 auto 12px",
+                background: t.successSoft, color: t.success,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <MailCheck size={22} strokeWidth={1.8} />
+            </span>
             <p style={{ color: t.textMuted, fontSize: 14, margin: "0 0 20px" }}>
               E-Mail verschickt! Prüfe dein Postfach (auch den Spam-Ordner) und folge dem Link.
             </p>

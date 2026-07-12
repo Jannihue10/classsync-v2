@@ -57,8 +57,8 @@
 
 ### Kurse
 - **Jedes Klassenmitglied** kann Kurse erstellen → wird Kurs-Admin (`erstellerId`) und einziges Startmitglied
-- `KursFormModal` (Erstellen + Bearbeiten in einem): Name, Lehrer, Raum, mehrere Zeiten (Tag + Start + Ende), Farbe (12 Swatches + freier Farbwähler), Icon (Emoji-Textfeld)
-- **18 Fächervorlagen** (Dropdown) setzen Name + Farbe + Icon vor
+- `KursFormModal` (Erstellen + Bearbeiten in einem): Name, Lehrer, Raum, mehrere Zeiten (Tag + Start + Ende), Farbe (12 Swatches + freier Farbwähler). Kein Icon-Feld – Kurse werden überall als **farbiges Monogramm** dargestellt (`CourseAvatar`: Anfangsbuchstabe in Kursfarbe)
+- **18 Fächervorlagen** (Dropdown) setzen Name + Farbe vor
 - Kurs-Admin bearbeitet/löscht eigenen Kurs, Klassen-Admin alle
 - **Kurs-Mitgliedschaft = `memberIds`-Array am Kurs-Doc** (Kernänderung ggü. altem Schema, s. §6)
 
@@ -125,9 +125,10 @@
 - `vite-plugin-pwa` (autoUpdate), `manifest` in `vite.config.js`: standalone, theme `#111111`, Icons 192/512
 - Icons 16/32/180/192/512 in `/public/` (aus dem alten Projekt übernommen)
 
-### Theming
+### Theming & Designsprache
 - Kompletter **Light/Dark Mode** mit Design-Tokens in `src/styles/theme.js`; initial via `prefers-color-scheme`, gespeichert in `localStorage` (`classsync_theme`)
 - Styling ausschließlich **Inline Styles + Tokens**, keine CSS-Library; globale Resets + Keyframes (`cs-spin`, `cs-fadein`, `cs-slideup`, `cs-slidein-left/right`) in `index.html`
+- **Designsprache (bewusster „De-AI"-Feinschliff, Juli 2026):** Slate-Neutraltöne mit sparsamem Akzent (Light `#3b6ea5`, Dark `#6d9bcf`) statt des früheren Indigo `#6366f1`; **keine Farbverläufe**; flache Hairline-Schatten; Radius 7/10/14. **Keine Emoji in der UI** – Icons kommen aus `lucide-react` (Linien-Icons, `strokeWidth 1.8`), Kurse als `CourseAvatar`-Monogramme, Logo als flaches `LogoMark` (GraduationCap auf Akzent-Quadrat). Diese Prinzipien bei neuen Features beibehalten!
 
 ---
 
@@ -143,6 +144,7 @@
 | PWA | vite-plugin-pwa (`^1.3.0`) |
 | Hosting | Vercel (SPA-Rewrite via `vercel.json`) |
 | Styling | Inline Styles + Design-Tokens (kein CSS-Framework) |
+| Icons | lucide-react (`^1.24`), tree-shakeable Linien-Icons |
 | Fonts | Inter (Google Fonts, via `index.html`) |
 
 ---
@@ -178,7 +180,9 @@ ClassSync Fable/
     │   └── NotificationContext.jsx ← Material-Listener pro eigenem Kurs, lastSeen, Dedupe per ID, grouped, markAllRead
     ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints
     ├── components/
-    │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card
+    │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, CloseButton, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card, LogoMark
+    │   ├── ui/CourseAvatar.jsx     ← farbiges Kurs-Monogramm (ersetzt Emoji-Icons)
+    │   ├── ui/DateiIcon.jsx        ← PDF/Bild/Notiz-Icon (Lucide)
     │   ├── layout/
     │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes, Mobile-Drawer, öffnet Kurswahl-/KursForm-/Notification-Overlays
     │   │   ├── Sidebar.jsx         ← Logo/Klassenname, Nav, Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke/Theme unten
@@ -197,7 +201,7 @@ ClassSync Fable/
     │   │   └── ChatPanel.jsx       ← Bubbles, Auto-Scroll, Eingabezeile
     │   └── modals/
     │       ├── KurswahlModal.jsx   ← Toggle-Karten, Suche, Alle (ab)wählen, memberIds-Diff
-    │       ├── KursFormModal.jsx   ← Create+Edit, Vorlagen, Zeiten-Editor, Farb-/Icon-Wahl
+    │       ├── KursFormModal.jsx   ← Create+Edit, Vorlagen, Zeiten-Editor, Farbwahl + Monogramm-Vorschau
     │       └── ConfirmDialog.jsx   ← generischer Bestätigungsdialog (busy-State)
     └── pages/
         ├── Landing.jsx             ← Marketing-Page (classsync.de)
@@ -237,7 +241,8 @@ ClassSync Fable/
   name, lehrer, raum: string
   zeiten:     [{ day: "Mo".."Fr", zeit: "HH:MM", zeitEnde: "HH:MM" }]
   farbe:      string (Hex)
-  icon:       string (Emoji)
+  # (Alt-Kurse können noch ein icon-Feld (Emoji) haben – wird seit dem
+  #  Design-Feinschliff ignoriert; Anzeige läuft über CourseAvatar-Monogramme)
   erstellerId:   string          ← Kurs-Admin (ersetzt altes adminId)
   erstellerNick: string
   memberIds:  string[]           ← NEU: beigetretene User
@@ -438,19 +443,22 @@ VITE_FIREBASE_APP_ID
 
 ## 13. Fächervorlagen (`lib/faecher.js`)
 
-| Fach | Farbe | Icon | | Fach | Farbe | Icon |
-|---|---|---|---|---|---|---|
-| Mathematik | #6366f1 | 📐 | | Informatik | #3b82f6 | 💻 |
-| Deutsch | #f59e0b | 📖 | | Musik | #ec4899 | 🎵 |
-| Biologie | #10b981 | 🌿 | | Geografie | #10b981 | 🌍 |
-| Englisch | #3b82f6 | 🇬🇧 | | Wirtschaft | #f59e0b | 📈 |
-| Chemie | #ef4444 | ⚗️ | | Politik & Gesellschaft | #8b5cf6 | 🗳️ |
-| Geschichte | #8b5cf6 | 🏛️ | | Religion/Ethik | #94a3b8 | ✝️ |
-| Physik | #06b6d4 | ⚡ | | Latein | #d97706 | 📜 |
-| Französisch | #ec4899 | 🇫🇷 | | Spanisch | #ef4444 | 🇪🇸 |
-| Sport | #f97316 | ⚽ | | Kunst | #14b8a6 | 🎨 |
+Vorlagen setzen **Name + Farbe** (Anzeige als Monogramm, keine Icons):
 
-Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b · HA-Lösung #10b981 · Lernzettel #ec4899
+| Fach | Farbe | | Fach | Farbe |
+|---|---|---|---|---|
+| Mathematik | #6366f1 | | Informatik | #3b82f6 |
+| Deutsch | #f59e0b | | Musik | #ec4899 |
+| Biologie | #10b981 | | Geografie | #10b981 |
+| Englisch | #3b82f6 | | Wirtschaft | #f59e0b |
+| Chemie | #ef4444 | | Politik & Gesellschaft | #8b5cf6 |
+| Geschichte | #8b5cf6 | | Religion/Ethik | #94a3b8 |
+| Physik | #06b6d4 | | Latein | #d97706 |
+| Französisch | #ec4899 | | Spanisch | #ef4444 |
+| Sport | #f97316 | | Kunst | #14b8a6 |
+
+Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b · HA-Lösung #10b981 · Lernzettel #ec4899.
+`MAT_ICONS`/`DATEITYP_ICONS` sind **Lucide-Komponenten** (PenLine/ClipboardList/CircleCheck/BookOpen bzw. FileText/Image/StickyNote) – Verwendung: `const Icon = MAT_ICONS[typ]; <Icon size={16} />`.
 
 ---
 
@@ -462,7 +470,11 @@ Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b 
 - `<Modal width onClose noPad>` – Overlay-Modal (Escape + Backdrop-Klick schließen; `onClose=undefined` sperrt Schließen während busy)
 - `<ModalHeader title subtitle onClose>`
 - `<Pill label color>` / `<Tag label bg fg>` – farbige Badges
-- `<Divider>` / `<SectionTitle action>` / `<Spinner size center>` / `<Empty icon text sub action>`
-- `<Card hover onClick>` – Flächen-Container mit Token-Styles
+- `<Divider>` / `<SectionTitle action>` / `<Spinner size center>` / `<Card hover onClick>`
+- `<Empty icon={LucideIcon} text sub action>` – icon nimmt eine Lucide-Komponente (oder fertiges Element)
+- `<CloseButton onClick>` – einheitlicher Schließen-Button (X)
+- `<LogoMark size>` – flaches Logo-Mark (GraduationCap auf Akzent-Quadrat)
+- `<CourseAvatar name farbe size radius>` (eigene Datei) – Kurs-Monogramm
+- `<DateiIcon typ size color>` (eigene Datei) – PDF/Bild/Notiz-Icon
 
-Alle Komponenten holen sich die Design-Tokens über `useTheme()` → `t`.
+Alle Komponenten holen sich die Design-Tokens über `useTheme()` → `t`. Lucide-Icons: `size` 13–19 je nach Kontext, `strokeWidth 1.8` (Buttons/Nav) bzw. 2+ (Checks).

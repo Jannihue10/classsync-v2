@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
+import { Bell, Check, CheckCircle2 } from "lucide-react";
 import { useNotifications } from "../../context/NotificationContext";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_COLORS } from "../../lib/faecher";
 import { relativeTime } from "../../lib/dates";
 import { radius } from "../../styles/theme";
-import { Btn, Empty, Tag } from "../ui/UI";
+import { Btn, CloseButton, Empty, Tag } from "../ui/UI";
 
 // Slide-over von rechts: neue Materialien gruppiert nach Kurs
 export default function NotificationPanel({ onClose }) {
@@ -30,41 +31,32 @@ export default function NotificationPanel({ onClose }) {
             display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 17 }}>🔔</span>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: t.text }}>Neu für dich</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <Bell size={16} strokeWidth={1.8} color={t.textMuted} />
+            <h2 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: t.text }}>Neu für dich</h2>
             {unreadCount > 0 && (
               <span
                 style={{
                   background: t.danger, color: "#fff", borderRadius: 999,
-                  fontSize: 11, fontWeight: 800, padding: "1px 7px",
+                  fontSize: 11, fontWeight: 700, padding: "1px 7px",
                 }}
               >
                 {unreadCount}
               </span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Schließen"
-            style={{
-              background: t.surface2, border: "none", borderRadius: 999, width: 28, height: 28,
-              cursor: "pointer", color: t.textMuted, fontSize: 14,
-            }}
-          >
-            ✕
-          </button>
+          <CloseButton onClick={onClose} style={{ width: 28, height: 28 }} />
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
           {grouped.length === 0 ? (
-            <Empty icon="🎉" text="Alles gelesen!" sub="Neue Materialien deiner Kurse tauchen hier auf." />
+            <Empty icon={CheckCircle2} text="Alles gelesen" sub="Neue Materialien deiner Kurse tauchen hier auf." />
           ) : (
             grouped.map((gruppe) => (
               <div key={gruppe.kursId} style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, padding: "0 2px" }}>
-                  <span style={{ fontSize: 14 }}>{gruppe.icon}</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: gruppe.farbe }}>{gruppe.kursName}</span>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: gruppe.farbe, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: t.text }}>{gruppe.kursName}</span>
                 </div>
                 <div style={{ display: "grid", gap: 6 }}>
                   {gruppe.items.map((item) => (
@@ -79,7 +71,7 @@ export default function NotificationPanel({ onClose }) {
                       onMouseLeave={(e) => (e.currentTarget.style.background = t.surface2)}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Tag label={item.typ} bg={`${MAT_COLORS[item.typ]}22`} fg={MAT_COLORS[item.typ]} />
+                        <Tag label={item.typ} bg={`${MAT_COLORS[item.typ]}1c`} fg={MAT_COLORS[item.typ]} />
                         <span style={{ fontSize: 11.5, color: t.textFaint }}>{relativeTime(item.createdAt)}</span>
                       </div>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text }}>{item.titel}</div>
@@ -94,7 +86,9 @@ export default function NotificationPanel({ onClose }) {
 
         {unreadCount > 0 && (
           <div style={{ padding: 14, borderTop: `1px solid ${t.border}` }}>
-            <Btn full variant="soft" onClick={markAllRead}>✓ Alle gelesen</Btn>
+            <Btn full variant="soft" onClick={markAllRead}>
+              <Check size={15} strokeWidth={2} /> Alle gelesen
+            </Btn>
           </div>
         )}
       </div>

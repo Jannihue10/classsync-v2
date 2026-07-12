@@ -1,6 +1,26 @@
-import { useEffect } from "react";
+import { isValidElement, useEffect } from "react";
+import { GraduationCap } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { radius } from "../../styles/theme";
+
+// ---------- Logo ----------
+// Flaches Monogramm-Mark statt Emoji/Verlauf
+export function LogoMark({ size = 32, style }) {
+  const { t } = useTheme();
+  return (
+    <span
+      style={{
+        width: size, height: size, borderRadius: Math.round(size * 0.22),
+        background: t.accent, color: "#ffffff",
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+        ...style,
+      }}
+    >
+      <GraduationCap size={Math.round(size * 0.58)} strokeWidth={1.9} />
+    </span>
+  );
+}
 
 // ---------- Button ----------
 export function Btn({ variant = "primary", full, small, disabled, style, children, ...props }) {
@@ -33,7 +53,7 @@ export function Btn({ variant = "primary", full, small, disabled, style, childre
         whiteSpace: "nowrap",
         ...style,
       }}
-      onMouseEnter={(e) => !disabled && (e.currentTarget.style.filter = "brightness(0.94)")}
+      onMouseEnter={(e) => !disabled && (e.currentTarget.style.filter = "brightness(0.95)")}
       onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
       {...props}
     >
@@ -60,7 +80,6 @@ export function IconButton({ title, active, badge, style, children, ...props }) 
         justifyContent: "center",
         cursor: "pointer",
         color: t.textMuted,
-        fontSize: 17,
         transition: "background .15s",
         ...style,
       }}
@@ -117,7 +136,7 @@ export function Input({ label, error, textarea, style, inputRef, ...props }) {
   return (
     <label style={{ display: "block", width: "100%" }}>
       {label && (
-        <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.textMuted, marginBottom: 6 }}>
+        <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: t.textMuted, marginBottom: 6 }}>
           {label}
         </span>
       )}
@@ -186,32 +205,40 @@ export function ModalHeader({ title, subtitle, onClose }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: t.text }}>{title}</h2>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.text, letterSpacing: -0.2 }}>{title}</h2>
         {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: t.textMuted }}>{subtitle}</p>}
       </div>
-      {onClose && (
-        <button
-          onClick={onClose}
-          aria-label="Schließen"
-          style={{
-            background: t.surface2,
-            border: "none",
-            borderRadius: radius.full,
-            width: 30,
-            height: 30,
-            cursor: "pointer",
-            color: t.textMuted,
-            fontSize: 15,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          ✕
-        </button>
-      )}
+      {onClose && <CloseButton onClick={onClose} />}
     </div>
+  );
+}
+
+// Einheitlicher Schließen-Button (statt ✕-Glyph)
+export function CloseButton({ onClick, style }) {
+  const { t } = useTheme();
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Schließen"
+      style={{
+        background: t.surface2,
+        border: "none",
+        borderRadius: radius.full,
+        width: 30,
+        height: 30,
+        cursor: "pointer",
+        color: t.textMuted,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        ...style,
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </button>
   );
 }
 
@@ -224,10 +251,10 @@ export function Pill({ label, color, style }) {
         alignItems: "center",
         padding: "3px 10px",
         borderRadius: radius.full,
-        background: `${color}22`,
+        background: `${color}1c`,
         color,
         fontSize: 12,
-        fontWeight: 700,
+        fontWeight: 600,
         whiteSpace: "nowrap",
         ...style,
       }}
@@ -248,7 +275,7 @@ export function Tag({ label, bg, fg, style }) {
         background: bg,
         color: fg,
         fontSize: 11,
-        fontWeight: 700,
+        fontWeight: 600,
         whiteSpace: "nowrap",
         ...style,
       }}
@@ -268,7 +295,9 @@ export function SectionTitle({ children, action, style }) {
   const { t } = useTheme();
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 0 12px", ...style }}>
-      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: t.text }}>{children}</h3>
+      <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: t.text, display: "flex", alignItems: "center", gap: 7 }}>
+        {children}
+      </h3>
       {action}
     </div>
   );
@@ -296,12 +325,25 @@ export function Spinner({ size = 28, center }) {
 }
 
 // ---------- Empty ----------
-export function Empty({ icon = "📭", text, sub, action, style }) {
+// icon: Lucide-Komponente (bevorzugt) oder beliebiger React-Node
+export function Empty({ icon: Icon, text, sub, action, style }) {
   const { t } = useTheme();
   return (
-    <div style={{ textAlign: "center", padding: "42px 20px", color: t.textMuted, ...style }}>
-      <div style={{ fontSize: 36, marginBottom: 10 }}>{icon}</div>
-      <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{text}</div>
+    <div style={{ textAlign: "center", padding: "40px 20px", color: t.textMuted, ...style }}>
+      {Icon && (
+        <span
+          style={{
+            width: 44, height: 44, borderRadius: radius.full, margin: "0 auto 12px",
+            background: t.surface2, color: t.textFaint,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          {/* Lucide-Icons sind forwardRef-Objekte -> als Komponente instanziieren,
+              fertige Elemente/Strings direkt durchreichen */}
+          {isValidElement(Icon) || typeof Icon === "string" ? Icon : <Icon size={21} strokeWidth={1.8} />}
+        </span>
+      )}
+      <div style={{ fontSize: 14.5, fontWeight: 600, color: t.text }}>{text}</div>
       {sub && <div style={{ fontSize: 13, marginTop: 5 }}>{sub}</div>}
       {action && <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>{action}</div>}
     </div>

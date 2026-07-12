@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { CalendarCheck, Plus, Trash2 } from "lucide-react";
 import { addDoc, collection, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
@@ -58,7 +59,7 @@ export default function PruefungenSection({ klasseId, kurs, pruefungen, compact 
 
   return (
     <Card style={{ padding: 16 }}>
-      <SectionTitle>🎯 Prüfungen</SectionTitle>
+      <SectionTitle>Prüfungen</SectionTitle>
 
       <form
         onSubmit={handleAdd}
@@ -80,12 +81,14 @@ export default function PruefungenSection({ klasseId, kurs, pruefungen, compact 
             onChange={(e) => setDatum(e.target.value)}
             style={{ ...inputStyle, flex: compact ? 1 : undefined }}
           />
-          <Btn type="submit" small disabled={busy || titel.trim().length < 2 || !datum}>+</Btn>
+          <Btn type="submit" small disabled={busy || titel.trim().length < 2 || !datum} aria-label="Hinzufügen">
+            <Plus size={15} strokeWidth={2} />
+          </Btn>
         </div>
       </form>
 
       {sorted.length === 0 ? (
-        <Empty icon="🧘" text="Keine Prüfungen eingetragen" sub="Entspann dich – oder trag die nächste ein." style={{ padding: "22px 10px" }} />
+        <Empty icon={CalendarCheck} text="Keine Prüfungen eingetragen" sub="Entspann dich – oder trag die nächste ein." style={{ padding: "22px 10px" }} />
       ) : (
         <div style={{ display: "grid", gap: 7 }}>
           {sorted.map((pr) => {
@@ -114,14 +117,14 @@ export default function PruefungenSection({ klasseId, kurs, pruefungen, compact 
                     {formatDatum(pr.datum)} · von {pr.autor}
                   </span>
                 </span>
-                <Pill label={vorbei ? "✓ vorbei" : tageLabel(pr.tage)} color={color} />
+                <Pill label={vorbei ? "vorbei" : tageLabel(pr.tage)} color={color} />
                 {canDelete && (
                   <button
                     onClick={() => deleteDoc(doc(db, "klassen", klasseId, "kurse", kurs.id, "pruefungen", pr.id))}
                     title="Löschen"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: t.textFaint, padding: 2 }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: t.textFaint, padding: 2, display: "flex", alignItems: "center" }}
                   >
-                    🗑️
+                    <Trash2 size={13.5} strokeWidth={1.8} />
                   </button>
                 )}
               </div>

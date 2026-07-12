@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
@@ -59,7 +60,7 @@ export default function KalenderPage() {
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
       <PageHeader
-        icon="📅"
+        icon={CalendarIcon}
         title="Kalender"
         action={
           <div style={{ display: "flex", gap: 6 }}>

@@ -1,10 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { Bell, Calendar, LayoutGrid, Moon, Plus, Settings2, Sun } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useTheme } from "../../context/ThemeContext";
 import { SIDEBAR_WIDTH, radius } from "../../styles/theme";
-import { IconButton } from "../ui/UI";
+import { IconButton, LogoMark } from "../ui/UI";
+import CourseAvatar from "../ui/CourseAvatar";
 
 export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, onOpenNotifications }) {
   const { t, toggle, mode } = useTheme();
@@ -21,7 +23,7 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
     borderRadius: radius.sm,
     textDecoration: "none",
     fontSize: 13.5,
-    fontWeight: 600,
+    fontWeight: isActive ? 600 : 500,
     color: isActive ? t.text : t.textMuted,
     background: isActive ? t.sidebarActive : "transparent",
     transition: "background .12s",
@@ -41,18 +43,10 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
     >
       {/* Kopf: Logo + Klassenname */}
       <div style={{ padding: "18px 16px 12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <div
-            style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
-            }}
-          >
-            🎒
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <LogoMark size={32} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 15.5, color: t.text, letterSpacing: -0.3 }}>ClassSync</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: t.text, letterSpacing: -0.3 }}>ClassSync</div>
             <div
               style={{
                 fontSize: 11.5, color: t.textMuted, whiteSpace: "nowrap",
@@ -69,17 +63,17 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
       {/* Haupt-Navigation */}
       <nav style={{ padding: "4px 10px", display: "grid", gap: 2 }}>
         <NavLink to="/" end style={navItemStyle} onClick={onNavigate}>
-          <span style={{ fontSize: 15 }}>🏠</span> Übersicht
+          <LayoutGrid size={16} strokeWidth={1.8} /> Übersicht
         </NavLink>
         <NavLink to="/kalender" style={navItemStyle} onClick={onNavigate}>
-          <span style={{ fontSize: 15 }}>📅</span> Kalender
+          <Calendar size={16} strokeWidth={1.8} /> Kalender
         </NavLink>
       </nav>
 
       {/* Kursliste */}
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 10px 8px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px", marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, color: t.textFaint, textTransform: "uppercase" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: t.textFaint, textTransform: "uppercase" }}>
             Meine Kurse
           </span>
           <button
@@ -87,33 +81,25 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
             title="Kurs erstellen"
             style={{
               background: "transparent", border: "none", cursor: "pointer",
-              color: t.textMuted, fontSize: 16, fontWeight: 700, width: 24, height: 24,
+              color: t.textMuted, width: 24, height: 24,
               borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = t.surfaceHover)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            +
+            <Plus size={15} strokeWidth={2} />
           </button>
         </div>
 
         <div style={{ display: "grid", gap: 2 }}>
           {meineKurse.length === 0 && (
             <div style={{ padding: "8px 8px", fontSize: 12.5, color: t.textFaint, lineHeight: 1.5 }}>
-              Noch keine Kurse. Erstelle einen mit „+" oder wähle unten „Kurse verwalten".
+              {'Noch keine Kurse. Erstelle einen mit „+" oder wähle unten „Kurse verwalten".'}
             </div>
           )}
           {meineKurse.map((kurs) => (
             <NavLink key={kurs.id} to={`/kurs/${kurs.id}`} style={navItemStyle} onClick={onNavigate}>
-              <span
-                style={{
-                  width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-                  background: `${kurs.farbe}22`, border: `1px solid ${kurs.farbe}44`,
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                }}
-              >
-                {kurs.icon}
-              </span>
+              <CourseAvatar name={kurs.name} farbe={kurs.farbe} size={26} radius={7} />
               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {kurs.name}
               </span>
@@ -126,11 +112,11 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
           style={{
             marginTop: 8, width: "100%", padding: "7px 12px", borderRadius: radius.sm,
             background: "transparent", border: `1px dashed ${t.borderStrong}`,
-            color: t.textMuted, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 8, justifyContent: "center",
+            color: t.textMuted, fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 7, justifyContent: "center",
           }}
         >
-          ⚙️ Kurse verwalten
+          <Settings2 size={14} strokeWidth={1.8} /> Kurse verwalten
         </button>
       </div>
 
@@ -153,16 +139,16 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         >
           <span
             style={{
-              width: 28, height: 28, borderRadius: 999, background: t.accent, color: t.accentText,
+              width: 28, height: 28, borderRadius: 999, background: t.accentSoft, color: t.accent,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12.5, fontWeight: 800, flexShrink: 0,
+              fontSize: 12.5, fontWeight: 700, flexShrink: 0,
             }}
           >
             {(profile?.nickname || "?")[0]?.toUpperCase()}
           </span>
           <span
             style={{
-              fontSize: 13, fontWeight: 600, color: t.text,
+              fontSize: 13, fontWeight: 500, color: t.text,
               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             }}
           >
@@ -170,10 +156,10 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
           </span>
         </button>
         <IconButton title="Benachrichtigungen" badge={unreadCount} onClick={onOpenNotifications}>
-          🔔
+          <Bell size={17} strokeWidth={1.8} />
         </IconButton>
         <IconButton title="Design wechseln" onClick={toggle}>
-          {mode === "light" ? "🌙" : "☀️"}
+          {mode === "light" ? <Moon size={17} strokeWidth={1.8} /> : <Sun size={17} strokeWidth={1.8} />}
         </IconButton>
       </div>
     </aside>

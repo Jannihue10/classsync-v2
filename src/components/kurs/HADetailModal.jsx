@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Check, EyeOff, Pencil, Trash2, Undo2 } from "lucide-react";
 import { deleteDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
@@ -72,23 +73,33 @@ export default function HADetailModal({ klasseId, kurs, ha, onClose }) {
             }}
           >
             <span>
-              📅 Fällig:{" "}
+              Fällig:{" "}
               <b style={{ color: ueberfaellig ? t.danger : t.text }}>
                 {formatDatum(ha.faellig)}
                 {tage !== null && tage >= 0 && ` (${tage === 0 ? "heute" : tage === 1 ? "morgen" : `in ${tage} Tagen`})`}
                 {ueberfaellig && " – überfällig"}
               </b>
             </span>
-            <span>✍️ Eingetragen von <b style={{ color: t.text }}>{ha.autor}</b></span>
-            <span>✅ Erledigt von {ha.doneBy?.length || 0} von {kurs.memberIds?.length || 0} Mitgliedern</span>
+            <span>Eingetragen von <b style={{ color: t.text }}>{ha.autor}</b></span>
+            <span>Erledigt von {ha.doneBy?.length || 0} von {kurs.memberIds?.length || 0} Mitgliedern</span>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <Btn small variant={done ? "soft" : "success"} onClick={() => toggleDone(klasseId, kurs.id, ha, profile.uid)}>
-              {done ? "↩︎ Doch nicht erledigt" : "✓ Erledigt"}
+              {done ? (
+                <>
+                  <Undo2 size={14} strokeWidth={1.8} /> Doch nicht erledigt
+                </>
+              ) : (
+                <>
+                  <Check size={14} strokeWidth={2} /> Erledigt
+                </>
+              )}
             </Btn>
             {canEdit && (
-              <Btn small variant="ghost" onClick={() => setEditMode(true)}>✏️ Bearbeiten</Btn>
+              <Btn small variant="ghost" onClick={() => setEditMode(true)}>
+                <Pencil size={13.5} strokeWidth={1.8} /> Bearbeiten
+              </Btn>
             )}
           </div>
 
@@ -96,11 +107,11 @@ export default function HADetailModal({ klasseId, kurs, ha, onClose }) {
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Btn small variant="ghost" onClick={handleHideForMe} disabled={busy}>
-              👁️‍🗨️ Für mich löschen
+              <EyeOff size={13.5} strokeWidth={1.8} /> Für mich löschen
             </Btn>
             {canEdit && (
               <Btn small variant="dangerGhost" onClick={handleDeleteForAll} disabled={busy}>
-                🗑️ Für alle löschen
+                <Trash2 size={13.5} strokeWidth={1.8} /> Für alle löschen
               </Btn>
             )}
           </div>

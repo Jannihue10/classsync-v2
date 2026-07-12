@@ -1,5 +1,7 @@
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { radius } from "../../styles/theme";
+import { LogoMark } from "../ui/UI";
 
 // Zentrierte Karte für Login/Register/Onboarding
 export default function AuthLayout({ title, subtitle, width = 400, children }) {
@@ -22,10 +24,11 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
         style={{
           position: "fixed", top: 14, right: 14, background: t.surface,
           border: `1px solid ${t.border}`, borderRadius: radius.full,
-          width: 38, height: 38, cursor: "pointer", fontSize: 16,
+          width: 38, height: 38, cursor: "pointer", color: t.textMuted,
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        {mode === "light" ? "🌙" : "☀️"}
+        {mode === "light" ? <Moon size={16} strokeWidth={1.8} /> : <Sun size={16} strokeWidth={1.8} />}
       </button>
 
       <Logo />
@@ -43,7 +46,7 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
         }}
       >
         {title && (
-          <h1 style={{ margin: "0 0 4px", fontSize: 21, fontWeight: 800, color: t.text }}>{title}</h1>
+          <h1 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: t.text, letterSpacing: -0.3 }}>{title}</h1>
         )}
         {subtitle && (
           <p style={{ margin: "0 0 20px", fontSize: 13.5, color: t.textMuted }}>{subtitle}</p>
@@ -57,18 +60,9 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
 export function Logo({ size = 26, style }) {
   const { t } = useTheme();
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 26, ...style }}>
-      <div
-        style={{
-          width: size + 10, height: size + 10, borderRadius: 10,
-          background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: size - 6, boxShadow: "0 4px 14px rgba(99,102,241,.35)",
-        }}
-      >
-        🎒
-      </div>
-      <span style={{ fontSize: size - 4, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 26, ...style }}>
+      <LogoMark size={size + 10} />
+      <span style={{ fontSize: size - 5, fontWeight: 700, color: t.text, letterSpacing: -0.4 }}>
         ClassSync
       </span>
     </div>

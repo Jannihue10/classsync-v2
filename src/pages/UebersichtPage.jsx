@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { CalendarCheck, CheckCircle2, FolderOpen, GraduationCap } from "lucide-react";
+import DateiIcon from "../components/ui/DateiIcon";
 import { useAuth } from "../context/AuthContext";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { tsMillis } from "../lib/useKursCollection";
 import { calcTage, formatDatum, relativeTime, tageLabel } from "../lib/dates";
-import { MAT_COLORS, DATEITYP_ICONS } from "../lib/faecher";
+import { MAT_COLORS } from "../lib/faecher";
 import { pruefungColor } from "../components/kurs/PruefungenSection";
 import { toggleDone } from "../components/kurs/HASection";
 import { radius } from "../styles/theme";
@@ -52,26 +54,26 @@ export default function UebersichtPage() {
   const kursChip = (kurs) => (
     <span
       style={{
-        display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700,
+        display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600,
         color: kurs.farbe, background: `${kurs.farbe}1a`, borderRadius: 999, padding: "2px 8px",
         whiteSpace: "nowrap",
       }}
     >
-      {kurs.icon} {kurs.name}
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: kurs.farbe }} />
+      {kurs.name}
     </span>
   );
 
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
       <PageHeader
-        icon="👋"
-        title={`Hi, ${profile.nickname}!`}
+        title={`Hi, ${profile.nickname}`}
         subtitle={`${klasse.name} · ${meineKurse.length} Kurse`}
       />
 
       {meineKurse.length === 0 ? (
         <Empty
-          icon="🚀"
+          icon={GraduationCap}
           text="Leg los!"
           sub={'Erstelle deinen ersten Kurs über das „+" in der Sidebar oder wähle bestehende Kurse über „Kurse verwalten".'}
           style={{ marginTop: 40 }}
@@ -80,9 +82,9 @@ export default function UebersichtPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
           {/* Offene Hausaufgaben */}
           <Card style={{ padding: 16 }}>
-            <SectionTitle>📝 Offene Hausaufgaben {offeneHAs.length > 0 && <span style={{ color: t.textFaint }}>({offeneHAs.length})</span>}</SectionTitle>
+            <SectionTitle>Offene Hausaufgaben {offeneHAs.length > 0 && <span style={{ color: t.textFaint, fontWeight: 500 }}>({offeneHAs.length})</span>}</SectionTitle>
             {offeneHAs.length === 0 ? (
-              <Empty icon="🎉" text="Alles erledigt!" style={{ padding: "18px 10px" }} />
+              <Empty icon={CheckCircle2} text="Alles erledigt" style={{ padding: "18px 10px" }} />
             ) : (
               <div style={{ display: "grid", gap: 7 }}>
                 {offeneHAs.map((ha) => {
@@ -126,9 +128,9 @@ export default function UebersichtPage() {
 
           {/* Kommende Prüfungen */}
           <Card style={{ padding: 16 }}>
-            <SectionTitle>🎯 Kommende Prüfungen {kommende.length > 0 && <span style={{ color: t.textFaint }}>({kommende.length})</span>}</SectionTitle>
+            <SectionTitle>Kommende Prüfungen {kommende.length > 0 && <span style={{ color: t.textFaint, fontWeight: 500 }}>({kommende.length})</span>}</SectionTitle>
             {kommende.length === 0 ? (
-              <Empty icon="🧘" text="Keine Prüfungen in Sicht" style={{ padding: "18px 10px" }} />
+              <Empty icon={CalendarCheck} text="Keine Prüfungen in Sicht" style={{ padding: "18px 10px" }} />
             ) : (
               <div style={{ display: "grid", gap: 7 }}>
                 {kommende.map((pr) => (
@@ -159,9 +161,9 @@ export default function UebersichtPage() {
 
           {/* Neueste Materialien */}
           <Card style={{ padding: 16 }}>
-            <SectionTitle>📂 Zuletzt geteilt</SectionTitle>
+            <SectionTitle>Zuletzt geteilt</SectionTitle>
             {neueste.length === 0 ? (
-              <Empty icon="📂" text="Noch keine Materialien" sub="Öffne einen Kurs und teile das erste!" style={{ padding: "18px 10px" }} />
+              <Empty icon={FolderOpen} text="Noch keine Materialien" sub="Öffne einen Kurs und teile das erste!" style={{ padding: "18px 10px" }} />
             ) : (
               <div style={{ display: "grid", gap: 7 }}>
                 {neueste.map((mat) => (
@@ -174,7 +176,7 @@ export default function UebersichtPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{DATEITYP_ICONS[mat.dateiTyp] || "📄"}</span>
+                    <DateiIcon typ={mat.dateiTyp} />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {mat.titel}

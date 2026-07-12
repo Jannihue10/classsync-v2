@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Check, CheckCircle2, Plus } from "lucide-react";
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
@@ -78,7 +79,7 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
 
   return (
     <Card style={{ padding: 16 }}>
-      <SectionTitle>📝 Hausaufgaben</SectionTitle>
+      <SectionTitle>Hausaufgaben</SectionTitle>
 
       {/* Inline-Eingabe – immer oben, kein Modal nötig */}
       <form
@@ -103,12 +104,14 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
             onChange={(e) => setFaellig(e.target.value)}
             style={{ ...inputStyle, flex: compact ? 1 : undefined }}
           />
-          <Btn type="submit" small disabled={busy || text.trim().length < 2}>+</Btn>
+          <Btn type="submit" small disabled={busy || text.trim().length < 2} aria-label="Hinzufügen">
+            <Plus size={15} strokeWidth={2} />
+          </Btn>
         </div>
       </form>
 
       {sichtbare.length === 0 ? (
-        <Empty icon="🎉" text="Keine Hausaufgaben" sub="Genieß die Freizeit!" style={{ padding: "22px 10px" }} />
+        <Empty icon={CheckCircle2} text="Keine Hausaufgaben" sub="Genieß die Freizeit!" style={{ padding: "22px 10px" }} />
       ) : (
         <div style={{ display: "grid", gap: 7 }}>
           {sichtbare.map((ha) => {
@@ -132,11 +135,11 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
                     width: 20, height: 20, borderRadius: 6, flexShrink: 0, cursor: "pointer",
                     border: `1.5px solid ${done ? t.success : t.borderStrong}`,
                     background: done ? t.success : "transparent",
-                    color: "#fff", fontSize: 11, fontWeight: 800,
+                    color: "#fff",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
-                  {done ? "✓" : ""}
+                  {done && <Check size={13} strokeWidth={2.8} />}
                 </button>
                 <span
                   style={{

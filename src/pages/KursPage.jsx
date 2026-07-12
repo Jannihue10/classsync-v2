@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  CalendarCheck, CircleOff, Clock, FolderOpen, MapPin, MessageSquare,
+  Pencil, PenLine, Plus, Trash2, User, Users,
+} from "lucide-react";
+import CourseAvatar from "../components/ui/CourseAvatar";
 import { useAuth } from "../context/AuthContext";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
@@ -49,7 +54,7 @@ export default function KursPage() {
   if (!kurs) {
     return (
       <Empty
-        icon="🫥"
+        icon={CircleOff}
         text="Dieser Kurs existiert nicht mehr"
         sub="Er wurde vermutlich gelöscht."
         action={<Btn onClick={() => navigate("/")}>Zur Übersicht</Btn>}
@@ -67,14 +72,14 @@ export default function KursPage() {
   const tab = isWide && (rawTab === "ha" || rawTab === "pruefungen") ? "material" : rawTab;
   const tabs = isWide
     ? [
-        { id: "material", label: "📂 Materialien" },
-        { id: "chat", label: "💬 Chat" },
+        { id: "material", label: "Materialien", icon: FolderOpen },
+        { id: "chat", label: "Chat", icon: MessageSquare },
       ]
     : [
-        { id: "material", label: "📂 Materialien" },
-        { id: "ha", label: "📝 Hausaufgaben", badge: offeneHAs },
-        { id: "pruefungen", label: "🎯 Prüfungen", badge: kommendePruefungen },
-        { id: "chat", label: "💬 Chat" },
+        { id: "material", label: "Materialien", icon: FolderOpen },
+        { id: "ha", label: "Hausaufgaben", icon: PenLine, badge: offeneHAs },
+        { id: "pruefungen", label: "Prüfungen", icon: CalendarCheck, badge: kommendePruefungen },
+        { id: "chat", label: "Chat", icon: MessageSquare },
       ];
 
   return (
@@ -82,8 +87,9 @@ export default function KursPage() {
       {/* Kurs-Header */}
       <div
         style={{
-          background: `linear-gradient(120deg, ${kurs.farbe}26, ${kurs.farbe}0d)`,
-          border: `1px solid ${kurs.farbe}33`,
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          borderLeft: `3px solid ${kurs.farbe}`,
           borderRadius: radius.lg,
           padding: "18px 20px",
           display: "flex",
@@ -91,38 +97,35 @@ export default function KursPage() {
           gap: 16,
           flexWrap: "wrap",
           marginBottom: 16,
+          boxShadow: t.shadow,
         }}
       >
-        <div
-          style={{
-            width: 52, height: 52, borderRadius: 14, background: `${kurs.farbe}2e`,
-            border: `1px solid ${kurs.farbe}55`, display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: 26, flexShrink: 0,
-          }}
-        >
-          {kurs.icon}
-        </div>
+        <CourseAvatar name={kurs.name} farbe={kurs.farbe} size={50} radius={13} />
         <div style={{ flex: 1, minWidth: 200 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: t.text, letterSpacing: -0.4 }}>
             {kurs.name}
           </h1>
-          <div style={{ fontSize: 13, color: t.textMuted, marginTop: 3, display: "flex", gap: 14, flexWrap: "wrap" }}>
-            {kurs.lehrer && <span>👤 {kurs.lehrer}</span>}
-            {kurs.raum && <span>📍 {kurs.raum}</span>}
-            {zeitenText && <span>🕐 {zeitenText}</span>}
-            <span>👥 {kurs.memberIds?.length || 0} Mitglieder</span>
+          <div style={{ fontSize: 13, color: t.textMuted, marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+            {kurs.lehrer && <MetaItem icon={User} text={kurs.lehrer} />}
+            {kurs.raum && <MetaItem icon={MapPin} text={kurs.raum} />}
+            {zeitenText && <MetaItem icon={Clock} text={zeitenText} />}
+            <MetaItem icon={Users} text={`${kurs.memberIds?.length || 0} Mitglieder`} />
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {!isMember && (
             <Btn small onClick={() => setKursMembership(klasse.id, kurs.id, profile.uid, true)}>
-              + Beitreten
+              <Plus size={14} strokeWidth={2} /> Beitreten
             </Btn>
           )}
           {canManageKurs(kurs) && (
             <>
-              <Btn small variant="ghost" onClick={() => setEditOpen(true)}>✏️ Bearbeiten</Btn>
-              <Btn small variant="dangerGhost" onClick={() => setDeleteOpen(true)}>🗑️</Btn>
+              <Btn small variant="ghost" onClick={() => setEditOpen(true)}>
+                <Pencil size={13.5} strokeWidth={1.8} /> Bearbeiten
+              </Btn>
+              <Btn small variant="dangerGhost" onClick={() => setDeleteOpen(true)} aria-label="Kurs löschen">
+                <Trash2 size={14} strokeWidth={1.8} />
+              </Btn>
             </>
           )}
         </div>
@@ -139,17 +142,18 @@ export default function KursPage() {
               border: `1px solid ${tab === tabDef.id ? "transparent" : t.border}`,
               background: tab === tabDef.id ? t.accent : t.surface,
               color: tab === tabDef.id ? t.accentText : t.textMuted,
-              fontSize: 13, fontWeight: 700, cursor: "pointer",
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
               display: "flex", alignItems: "center", gap: 7,
             }}
           >
+            <tabDef.icon size={14} strokeWidth={1.8} />
             {tabDef.label}
             {tabDef.badge > 0 && (
               <span
                 style={{
                   background: tab === tabDef.id ? "rgba(255,255,255,.25)" : t.dangerSoft,
                   color: tab === tabDef.id ? t.accentText : t.danger,
-                  borderRadius: 999, fontSize: 11, fontWeight: 800, padding: "1px 7px",
+                  borderRadius: 999, fontSize: 11, fontWeight: 700, padding: "1px 7px",
                 }}
               >
                 {tabDef.badge}
@@ -193,5 +197,15 @@ export default function KursPage() {
         />
       )}
     </div>
+  );
+}
+
+// Meta-Zeile im Kurs-Header (Lehrer, Raum, Zeiten, Mitglieder)
+function MetaItem({ icon: Icon, text }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <Icon size={13} strokeWidth={1.8} style={{ opacity: 0.75 }} />
+      {text}
+    </span>
   );
 }

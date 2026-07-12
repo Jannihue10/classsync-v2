@@ -4,7 +4,15 @@ import { getDownloadURL, ref as storageRef, uploadBytesResumable } from "firebas
 import { db, storage } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { Paperclip, Upload, X } from "lucide-react";
 import { MAT_TYPEN, MAT_COLORS, MAT_ICONS } from "../../lib/faecher";
+import DateiIcon from "../ui/DateiIcon";
+
+// Typ-Icon aus MAT_ICONS (Lucide-Komponente)
+function TypIcon({ typ }) {
+  const Icon = MAT_ICONS[typ];
+  return Icon ? <Icon size={15} strokeWidth={1.8} /> : null;
+}
 import { radius } from "../../styles/theme";
 import { Btn, Input, Modal, ModalHeader } from "../ui/UI";
 
@@ -124,7 +132,7 @@ export default function UploadModal({ klasseId, kurs, onClose }) {
                     display: "flex", alignItems: "center", gap: 7,
                   }}
                 >
-                  {MAT_ICONS[matTyp]} {matTyp}
+                  <TypIcon typ={matTyp} /> {matTyp}
                 </button>
               );
             })}
@@ -168,7 +176,7 @@ export default function UploadModal({ klasseId, kurs, onClose }) {
                 background: t.surface2, border: `1px solid ${t.border}`, borderRadius: radius.sm,
               }}
             >
-              <span style={{ fontSize: 18 }}>{file.type === "application/pdf" ? "📄" : "🖼️"}</span>
+              <DateiIcon typ={file.type === "application/pdf" ? "PDF" : "Bild"} size={18} />
               <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {file.name}
               </span>
@@ -179,9 +187,9 @@ export default function UploadModal({ klasseId, kurs, onClose }) {
                 <button
                   type="button"
                   onClick={() => { setFile(null); fileInputRef.current.value = ""; }}
-                  style={{ background: "none", border: "none", color: t.danger, cursor: "pointer", fontSize: 14 }}
+                  style={{ background: "none", border: "none", color: t.danger, cursor: "pointer", display: "flex", alignItems: "center" }}
                 >
-                  ✕
+                  <X size={15} strokeWidth={2} />
                 </button>
               )}
             </div>
@@ -195,7 +203,8 @@ export default function UploadModal({ klasseId, kurs, onClose }) {
                 color: t.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer",
               }}
             >
-              📎 Datei auswählen – oder ohne Datei als Notiz speichern
+              <Paperclip size={15} strokeWidth={1.8} style={{ verticalAlign: "-2px", marginRight: 6 }} />
+              Datei auswählen – oder ohne Datei als Notiz speichern
             </button>
           )}
         </div>
@@ -216,7 +225,13 @@ export default function UploadModal({ klasseId, kurs, onClose }) {
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
           <Btn variant="ghost" type="button" onClick={onClose} disabled={busy}>Abbrechen</Btn>
           <Btn type="submit" disabled={busy}>
-            {busy ? (file ? `Hochladen… ${progress}%` : "Speichern…") : "⬆️ Teilen"}
+            {busy ? (
+              file ? `Hochladen… ${progress}%` : "Speichern…"
+            ) : (
+              <>
+                <Upload size={14} strokeWidth={1.9} /> Teilen
+              </>
+            )}
           </Btn>
         </div>
       </form>

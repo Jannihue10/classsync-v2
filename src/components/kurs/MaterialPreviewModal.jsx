@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { ExternalLink, Star, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
-import { MAT_COLORS, DATEITYP_ICONS } from "../../lib/faecher";
+import { MAT_COLORS } from "../../lib/faecher";
 import { relativeTime } from "../../lib/dates";
 import { radius } from "../../styles/theme";
-import { Btn, Modal, Tag } from "../ui/UI";
+import { Btn, CloseButton, Modal, Tag } from "../ui/UI";
+import DateiIcon from "../ui/DateiIcon";
 import ConfirmDialog from "../modals/ConfirmDialog";
 import { canDeleteMaterial, deleteMaterial, toggleLike } from "./materialActions";
 
@@ -32,7 +34,7 @@ export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose }) {
       >
         <Tag label={mat.typ} bg={`${color}22`} fg={color} />
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{mat.titel}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{mat.titel}</div>
           <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>
             von {mat.autor} · {relativeTime(mat.createdAt)}
             {mat.dateiName ? ` · ${mat.dateiName}` : ""}
@@ -40,27 +42,22 @@ export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Btn small variant={liked ? "soft" : "ghost"} onClick={() => toggleLike(klasseId, kurs.id, mat, profile.uid)}>
-            <span style={{ color: liked ? t.star : undefined }}>{liked ? "⭐" : "☆"}</span>
+            <Star size={14} strokeWidth={1.8} color={liked ? t.star : undefined} fill={liked ? t.star : "none"} />
             {likeCount > 0 ? likeCount : "Danke"}
           </Btn>
           {hasFile && (
             <a href={mat.dateiUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-              <Btn small variant="ghost">⬇️ Öffnen</Btn>
+              <Btn small variant="ghost">
+                <ExternalLink size={14} strokeWidth={1.8} /> Öffnen
+              </Btn>
             </a>
           )}
           {canDeleteMaterial(mat, profile.uid, isKlassenAdmin, kurs) && (
-            <Btn small variant="dangerGhost" onClick={() => setConfirmDelete(true)}>🗑️</Btn>
+            <Btn small variant="dangerGhost" onClick={() => setConfirmDelete(true)}>
+              <Trash2 size={14} strokeWidth={1.8} />
+            </Btn>
           )}
-          <button
-            onClick={onClose}
-            aria-label="Schließen"
-            style={{
-              background: t.surface2, border: "none", borderRadius: 999, width: 30, height: 30,
-              cursor: "pointer", color: t.textMuted, fontSize: 14,
-            }}
-          >
-            ✕
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
       </div>
 
@@ -87,7 +84,7 @@ export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose }) {
               fontSize: 14, color: t.text, lineHeight: 1.65, whiteSpace: "pre-wrap",
             }}
           >
-            <span style={{ fontSize: 20, display: "block", marginBottom: 8 }}>{DATEITYP_ICONS.Notiz}</span>
+            <DateiIcon typ="Notiz" size={20} style={{ display: "block", marginBottom: 8 }} />
             {mat.beschreibung || "Keine Notiz vorhanden."}
           </div>
         )}

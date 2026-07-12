@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MessageSquare, SendHorizontal } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
@@ -52,7 +53,7 @@ export default function ChatPanel({ klasseId, kurs }) {
         {loading ? (
           <Spinner center />
         ) : messages.length === 0 ? (
-          <Empty icon="💬" text="Noch keine Nachrichten" sub={`Starte die Unterhaltung in ${kurs.name}!`} />
+          <Empty icon={MessageSquare} text="Noch keine Nachrichten" sub={`Starte die Unterhaltung in ${kurs.name}!`} />
         ) : (
           messages.map((msg, i) => {
             const own = msg.autorId === profile.uid;
@@ -108,8 +109,8 @@ export default function ChatPanel({ klasseId, kurs }) {
             color: t.text, fontSize: 13.5, outline: "none",
           }}
         />
-        <Btn type="submit" small disabled={busy || !text.trim()} style={{ borderRadius: radius.full }}>
-          ➤
+        <Btn type="submit" small disabled={busy || !text.trim()} style={{ borderRadius: radius.full }} aria-label="Senden">
+          <SendHorizontal size={15} strokeWidth={1.8} />
         </Btn>
       </form>
     </Card>

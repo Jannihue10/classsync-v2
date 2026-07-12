@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Check, Copy, Crown, Moon, Settings2, Sun, Trash2, TriangleAlert, User } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -56,7 +57,7 @@ export default function ProfilPage({ onOpenKurswahl }) {
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "20px 20px 40px" }}>
-      <PageHeader icon="👤" title="Profil & Klasse" />
+      <PageHeader icon={User} title="Profil & Klasse" />
 
       <div style={{ display: "grid", gap: 16 }}>
         {/* Eigenes Profil */}
@@ -72,7 +73,11 @@ export default function ProfilPage({ onOpenKurswahl }) {
               />
             </div>
             <Btn type="submit" small disabled={nickBusy || nickname.trim().length < 2 || nickname.trim() === profile.nickname}>
-              {nickBusy ? "Speichern…" : nickSaved ? "✓ Gespeichert" : "Speichern"}
+              {nickBusy ? "Speichern…" : nickSaved ? (
+                <>
+                  <Check size={14} strokeWidth={2} /> Gespeichert
+                </>
+              ) : "Speichern"}
             </Btn>
           </form>
           <p style={{ margin: "10px 0 0", fontSize: 12.5, color: t.textFaint }}>
@@ -81,7 +86,15 @@ export default function ProfilPage({ onOpenKurswahl }) {
           <Divider />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Btn small variant="soft" onClick={toggle}>
-              {mode === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+              {mode === "light" ? (
+                <>
+                  <Moon size={14} strokeWidth={1.8} /> Dark Mode
+                </>
+              ) : (
+                <>
+                  <Sun size={14} strokeWidth={1.8} /> Light Mode
+                </>
+              )}
             </Btn>
             <Btn small variant="ghost" onClick={logout}>Abmelden</Btn>
           </div>
@@ -90,13 +103,17 @@ export default function ProfilPage({ onOpenKurswahl }) {
         {/* Klasse */}
         <Card style={{ padding: 18 }}>
           <SectionTitle
-            action={<Btn small variant="soft" onClick={onOpenKurswahl}>⚙️ Kurse verwalten</Btn>}
+            action={
+              <Btn small variant="soft" onClick={onOpenKurswahl}>
+                <Settings2 size={14} strokeWidth={1.8} /> Kurse verwalten
+              </Btn>
+            }
           >
             Deine Klasse
           </SectionTitle>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{klasse.name}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{klasse.name}</div>
               <div style={{ fontSize: 12.5, color: t.textMuted, marginTop: 2 }}>
                 {mitglieder?.length ?? "…"} Mitglieder
               </div>
@@ -110,11 +127,19 @@ export default function ProfilPage({ onOpenKurswahl }) {
                 cursor: "pointer",
               }}
             >
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: 4, color: t.accent }}>
+              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: 4, color: t.accent }}>
                 {klasse.code}
               </span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: t.textMuted }}>
-                {copied ? "✓ Kopiert" : "📋 Kopieren"}
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: t.textMuted, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                {copied ? (
+                  <>
+                    <Check size={12} strokeWidth={2.2} /> Kopiert
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} strokeWidth={1.8} /> Kopieren
+                  </>
+                )}
               </span>
             </button>
           </div>
@@ -144,24 +169,26 @@ export default function ProfilPage({ onOpenKurswahl }) {
                   >
                     <span
                       style={{
-                        width: 30, height: 30, borderRadius: 999, background: istAdmin ? t.warning : t.accent,
-                        color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 13, fontWeight: 800, flexShrink: 0,
+                        width: 30, height: 30, borderRadius: 999,
+                        background: istAdmin ? t.warningSoft : t.accentSoft,
+                        color: istAdmin ? t.warning : t.accent,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 700, flexShrink: 0,
                       }}
                     >
                       {m.nickname?.[0]?.toUpperCase() || "?"}
                     </span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.nickname} {istIch && <span style={{ color: t.textFaint, fontWeight: 500 }}>(du)</span>}
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.nickname} {istIch && <span style={{ color: t.textFaint }}>(du)</span>}
                     </span>
                     {istAdmin && (
-                      <span style={{ fontSize: 11, fontWeight: 800, color: t.warning, background: t.warningSoft, borderRadius: 999, padding: "2px 9px" }}>
-                        👑 Admin
+                      <span style={{ fontSize: 11, fontWeight: 700, color: t.warning, background: t.warningSoft, borderRadius: 999, padding: "2px 9px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Crown size={11} strokeWidth={1.8} /> Admin
                       </span>
                     )}
                     {isKlassenAdmin && !istAdmin && (
                       <Btn small variant="soft" onClick={() => promoteAdmin(klasse.id, m.uid)}>
-                        👑 Zum Admin
+                        <Crown size={13} strokeWidth={1.8} /> Zum Admin
                       </Btn>
                     )}
                     {isKlassenAdmin && istAdmin && !letzterAdmin && (
@@ -184,13 +211,15 @@ export default function ProfilPage({ onOpenKurswahl }) {
         {/* Gefahrenzone */}
         {isKlassenAdmin && (
           <Card style={{ padding: 18, borderColor: `${t.danger}44` }}>
-            <SectionTitle>⚠️ Gefahrenzone</SectionTitle>
+            <SectionTitle>
+              <TriangleAlert size={15} strokeWidth={1.8} color={t.danger} /> Gefahrenzone
+            </SectionTitle>
             <p style={{ margin: "0 0 12px", fontSize: 13, color: t.textMuted, lineHeight: 1.55 }}>
               Löscht die Klasse mit allen Kursen, Materialien, Hausaufgaben, Prüfungen und Chats – endgültig.
               Alle Mitglieder landen wieder im Onboarding.
             </p>
             <Btn small variant="dangerGhost" onClick={() => setDeleteOpen(true)}>
-              🗑️ Klasse löschen
+              <Trash2 size={13.5} strokeWidth={1.8} /> Klasse löschen
             </Btn>
           </Card>
         )}

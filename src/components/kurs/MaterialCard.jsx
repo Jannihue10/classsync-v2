@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Star, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
-import { MAT_COLORS, DATEITYP_ICONS } from "../../lib/faecher";
+import { MAT_COLORS } from "../../lib/faecher";
+import DateiIcon from "../ui/DateiIcon";
 import { relativeTime } from "../../lib/dates";
 import { radius } from "../../styles/theme";
 import { Tag } from "../ui/UI";
@@ -46,7 +48,7 @@ export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           ) : (
-            <span style={{ fontSize: 38, opacity: 0.85 }}>{DATEITYP_ICONS[mat.dateiTyp] || "📄"}</span>
+            <DateiIcon typ={mat.dateiTyp} size={30} color={`${color}99`} />
           )}
           <div style={{ position: "absolute", top: 8, left: 8 }}>
             <Tag label={mat.typ} bg={`${color}e6`} fg="#fff" />
@@ -72,12 +74,13 @@ export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
                 onClick={(e) => { e.stopPropagation(); toggleLike(klasseId, kurs.id, mat, profile.uid); }}
                 title={liked ? "Danke zurücknehmen" : "Danke sagen"}
                 style={{
-                  background: "none", border: "none", cursor: "pointer", fontSize: 13,
-                  color: liked ? t.star : t.textFaint, fontWeight: 700, padding: "2px 4px",
-                  display: "flex", alignItems: "center", gap: 3,
+                  background: "none", border: "none", cursor: "pointer", fontSize: 12,
+                  color: liked ? t.star : t.textFaint, fontWeight: 600, padding: "2px 4px",
+                  display: "flex", alignItems: "center", gap: 4,
                 }}
               >
-                {liked ? "⭐" : "☆"} {likeCount > 0 && likeCount}
+                <Star size={14} strokeWidth={1.8} fill={liked ? t.star : "none"} />
+                {likeCount > 0 && likeCount}
               </button>
               {canDeleteMaterial(mat, profile.uid, isKlassenAdmin, kurs) && (
                 <button
@@ -85,10 +88,10 @@ export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
                   title="Löschen"
                   style={{
                     background: "none", border: "none", cursor: "pointer",
-                    fontSize: 12, color: t.textFaint, padding: "2px 4px",
+                    color: t.textFaint, padding: "2px 4px", display: "flex", alignItems: "center",
                   }}
                 >
-                  🗑️
+                  <Trash2 size={13.5} strokeWidth={1.8} />
                 </button>
               )}
             </span>

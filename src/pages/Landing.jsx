@@ -1,15 +1,17 @@
+import { Bell, Calendar, CalendarCheck, FolderOpen, MessageSquare, PenLine } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { radius } from "../styles/theme";
+import { LogoMark } from "../components/ui/UI";
 
 const APP_URL = "https://app.classsync.de";
 
 const FEATURES = [
-  { icon: "📂", title: "Materialien teilen", text: "Mitschriften, HA-Lösungen, Lernzettel und Aufgabenblätter – als PDF, Bild oder Notiz. Für den ganzen Kurs, in Sekunden." },
-  { icon: "🗓️", title: "Stundenplan", text: "Baut sich automatisch aus den Kurszeiten auf. Ein Klick auf die Stunde bringt dich direkt zu den Materialien." },
-  { icon: "📝", title: "Hausaufgaben", text: "Einmal eingetragen, sieht sie der ganze Kurs. Jeder hakt für sich ab – nichts geht mehr unter." },
-  { icon: "🎯", title: "Prüfungs-Countdown", text: "Alle Klausuren mit Live-Countdown. Rot, gelb, grün – du siehst sofort, was als Nächstes ansteht." },
-  { icon: "💬", title: "Kurs-Chat", text: "Ein eigener Chat pro Kurs. Fragen stellen, Antworten bekommen – ohne die Klassengruppe zu fluten." },
-  { icon: "🔔", title: "Benachrichtigungen", text: "Neue Materialien seit deinem letzten Besuch, übersichtlich nach Kurs gruppiert." },
+  { icon: FolderOpen, title: "Materialien teilen", text: "Mitschriften, HA-Lösungen, Lernzettel und Aufgabenblätter – als PDF, Bild oder Notiz. Für den ganzen Kurs, in Sekunden." },
+  { icon: Calendar, title: "Stundenplan & Kalender", text: "Baut sich automatisch aus den Kurszeiten auf. Ein Klick auf die Stunde bringt dich direkt zu den Materialien." },
+  { icon: PenLine, title: "Hausaufgaben", text: "Einmal eingetragen, sieht sie der ganze Kurs. Jeder hakt für sich ab – nichts geht mehr unter." },
+  { icon: CalendarCheck, title: "Prüfungs-Countdown", text: "Alle Klausuren mit Live-Countdown. Du siehst sofort, was als Nächstes ansteht." },
+  { icon: MessageSquare, title: "Kurs-Chat", text: "Ein eigener Chat pro Kurs. Fragen stellen, Antworten bekommen – ohne die Klassengruppe zu fluten." },
+  { icon: Bell, title: "Benachrichtigungen", text: "Neue Materialien seit deinem letzten Besuch, übersichtlich nach Kurs gruppiert." },
 ];
 
 const STEPS = [
@@ -37,17 +39,9 @@ export default function Landing() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div
-              style={{
-                width: 34, height: 34, borderRadius: 9,
-                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
-              }}
-            >
-              🎒
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.4 }}>ClassSync</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <LogoMark size={32} />
+            <span style={{ fontWeight: 700, fontSize: 16.5, letterSpacing: -0.3 }}>ClassSync</span>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <a href={APP_URL} style={btnStyle(t, "ghost")}>Anmelden</a>
@@ -62,22 +56,15 @@ export default function Landing() {
           style={{
             display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 14px",
             borderRadius: 999, background: t.accentSoft, color: t.accent,
-            fontSize: 12.5, fontWeight: 700, marginBottom: 22,
+            fontSize: 12.5, fontWeight: 600, marginBottom: 22,
           }}
         >
-          ✨ Kostenlos für Schüler
+          Kostenlos für Schüler
         </div>
-        <h1 style={{ margin: 0, fontSize: "clamp(32px, 6vw, 54px)", fontWeight: 800, letterSpacing: -1.5, lineHeight: 1.1 }}>
+        <h1 style={{ margin: 0, fontSize: "clamp(32px, 6vw, 52px)", fontWeight: 700, letterSpacing: -1.4, lineHeight: 1.12 }}>
           Alles für deine Klasse.
           <br />
-          <span
-            style={{
-              background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
-              WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
-            }}
-          >
-            An einem Ort.
-          </span>
+          <span style={{ color: t.accent }}>An einem Ort.</span>
         </h1>
         <p style={{ margin: "22px auto 0", maxWidth: 560, fontSize: 17, color: t.textMuted, lineHeight: 1.6 }}>
           Mitschriften, Hausaufgaben, Lernzettel und Prüfungstermine – teile Unterrichtsmaterial
@@ -85,7 +72,7 @@ export default function Landing() {
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 34, flexWrap: "wrap" }}>
           <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "13px 28px", fontSize: 15 }}>
-            Kostenlos starten →
+            Kostenlos starten
           </a>
           <a href={APP_URL} style={{ ...btnStyle(t, "ghost"), padding: "13px 28px", fontSize: 15 }}>
             Ich habe schon ein Konto
@@ -98,7 +85,7 @@ export default function Landing() {
 
       {/* Features */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "20px 20px 70px" }}>
-        <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 36px" }}>
+        <h2 style={{ textAlign: "center", fontSize: 27, fontWeight: 700, letterSpacing: -0.5, margin: "0 0 36px" }}>
           Alles, was deine Klasse braucht
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
@@ -110,8 +97,16 @@ export default function Landing() {
                 padding: "24px 22px", boxShadow: t.shadow,
               }}
             >
-              <div style={{ fontSize: 30, marginBottom: 12 }}>{f.icon}</div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 16.5, fontWeight: 800 }}>{f.title}</h3>
+              <span
+                style={{
+                  width: 40, height: 40, borderRadius: radius.sm, marginBottom: 14,
+                  background: t.accentSoft, color: t.accent,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <f.icon size={19} strokeWidth={1.8} />
+              </span>
+              <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>{f.title}</h3>
               <p style={{ margin: 0, fontSize: 14, color: t.textMuted, lineHeight: 1.6 }}>{f.text}</p>
             </div>
           ))}
@@ -121,7 +116,7 @@ export default function Landing() {
       {/* 3 Schritte */}
       <section style={{ background: t.surface, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
         <div style={{ maxWidth: 1080, margin: "0 auto", padding: "60px 20px" }}>
-          <h2 style={{ textAlign: "center", fontSize: 28, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 36px" }}>
+          <h2 style={{ textAlign: "center", fontSize: 27, fontWeight: 700, letterSpacing: -0.5, margin: "0 0 36px" }}>
             In 3 Schritten startklar
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 24 }}>
@@ -129,15 +124,15 @@ export default function Landing() {
               <div key={s.nr} style={{ textAlign: "center", padding: "0 10px" }}>
                 <div
                   style={{
-                    width: 46, height: 46, borderRadius: 999, margin: "0 auto 14px",
-                    background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff",
+                    width: 44, height: 44, borderRadius: 999, margin: "0 auto 14px",
+                    background: t.accent, color: t.accentText,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 19, fontWeight: 800,
+                    fontSize: 18, fontWeight: 700,
                   }}
                 >
                   {s.nr}
                 </div>
-                <h3 style={{ margin: "0 0 8px", fontSize: 16.5, fontWeight: 800 }}>{s.title}</h3>
+                <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>{s.title}</h3>
                 <p style={{ margin: 0, fontSize: 14, color: t.textMuted, lineHeight: 1.6 }}>{s.text}</p>
               </div>
             ))}
@@ -147,21 +142,21 @@ export default function Landing() {
 
       {/* CTA */}
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "70px 20px", textAlign: "center" }}>
-        <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.6, margin: "0 0 14px" }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, margin: "0 0 14px" }}>
           Bereit für entspanntere Schultage?
         </h2>
         <p style={{ margin: "0 0 28px", fontSize: 15.5, color: t.textMuted }}>
           Erstelle deine Klasse in unter einer Minute – kostenlos.
         </p>
         <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "14px 32px", fontSize: 15.5 }}>
-          Jetzt kostenlos starten →
+          Jetzt kostenlos starten
         </a>
       </section>
 
       {/* Footer */}
       <footer style={{ borderTop: `1px solid ${t.border}`, padding: "26px 20px", textAlign: "center" }}>
         <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
-          🎒 ClassSync · Von Schülern, für Schüler · {new Date().getFullYear()}
+          ClassSync · Von Schülern, für Schüler · {new Date().getFullYear()}
         </p>
       </footer>
     </div>
@@ -171,10 +166,10 @@ export default function Landing() {
 function btnStyle(t, variant) {
   const base = {
     display: "inline-block", padding: "9px 18px", borderRadius: radius.sm,
-    fontSize: 13.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
+    fontSize: 13.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap",
   };
   if (variant === "primary") {
-    return { ...base, background: t.accent, color: t.accentText, boxShadow: "0 4px 14px rgba(99,102,241,.3)" };
+    return { ...base, background: t.accent, color: t.accentText };
   }
   return { ...base, background: "transparent", color: t.text, border: `1px solid ${t.borderStrong}` };
 }

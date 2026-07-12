@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { FolderOpen, SearchX, Upload } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_TYPEN, MAT_COLORS } from "../../lib/faecher";
 import { useKursCollection, tsMillis } from "../../lib/useKursCollection";
@@ -71,7 +72,7 @@ export default function MaterialGrid({ klasseId, kurs }) {
           })}
         </div>
         <input
-          placeholder="🔍 Suchen…"
+          placeholder="Suchen…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -79,14 +80,16 @@ export default function MaterialGrid({ klasseId, kurs }) {
             background: t.surface, color: t.text, fontSize: 13, outline: "none", width: 160,
           }}
         />
-        <Btn small onClick={() => setUploadOpen(true)}>⬆️ Hochladen</Btn>
+        <Btn small onClick={() => setUploadOpen(true)}>
+          <Upload size={14} strokeWidth={1.9} /> Hochladen
+        </Btn>
       </div>
 
       {loading ? (
         <Spinner center />
       ) : filtered.length === 0 ? (
         <Empty
-          icon={sorted.length === 0 ? "📂" : "🔍"}
+          icon={sorted.length === 0 ? FolderOpen : SearchX}
           text={sorted.length === 0 ? "Noch keine Materialien" : "Nichts gefunden"}
           sub={
             sorted.length === 0
@@ -95,7 +98,9 @@ export default function MaterialGrid({ klasseId, kurs }) {
           }
           action={
             sorted.length === 0 ? (
-              <Btn onClick={() => setUploadOpen(true)}>⬆️ Erstes Material hochladen</Btn>
+              <Btn onClick={() => setUploadOpen(true)}>
+                <Upload size={15} strokeWidth={1.9} /> Erstes Material hochladen
+              </Btn>
             ) : undefined
           }
         />

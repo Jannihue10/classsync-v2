@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { BookOpen, Check } from "lucide-react";
+import CourseAvatar from "../ui/CourseAvatar";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -56,7 +58,7 @@ export default function KurswahlModal({ onClose }) {
 
       {kurse.length === 0 ? (
         <Empty
-          icon="📚"
+          icon={BookOpen}
           text="Noch keine Kurse in dieser Klasse"
           sub={'Erstelle den ersten Kurs über das „+" in der Sidebar.'}
         />
@@ -65,7 +67,7 @@ export default function KurswahlModal({ onClose }) {
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
               <Input
-                placeholder="🔍 Kurs oder Lehrer suchen…"
+                placeholder="Kurs oder Lehrer suchen…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -98,17 +100,9 @@ export default function KurswahlModal({ onClose }) {
                     transition: "border-color .12s, background .12s",
                   }}
                 >
-                  <span
-                    style={{
-                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: `${kurs.farbe}22`, border: `1px solid ${kurs.farbe}44`,
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
-                    }}
-                  >
-                    {kurs.icon}
-                  </span>
+                  <CourseAvatar name={kurs.name} farbe={kurs.farbe} size={34} radius={9} />
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontWeight: 700, fontSize: 14, color: t.text }}>
+                    <span style={{ display: "block", fontWeight: 600, fontSize: 14, color: t.text }}>
                       {kurs.name}
                     </span>
                     <span style={{ display: "block", fontSize: 12, color: t.textMuted }}>
@@ -121,10 +115,10 @@ export default function KurswahlModal({ onClose }) {
                       display: "flex", alignItems: "center", justifyContent: "center",
                       background: active ? t.accent : "transparent",
                       border: `1.5px solid ${active ? t.accent : t.borderStrong}`,
-                      color: t.accentText, fontWeight: 800,
+                      color: t.accentText,
                     }}
                   >
-                    {active ? "✓" : ""}
+                    {active && <Check size={13} strokeWidth={2.5} />}
                   </span>
                 </button>
               );

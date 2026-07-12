@@ -8,7 +8,8 @@ import Sidebar from "./Sidebar";
 import NotificationPanel from "./NotificationPanel";
 import KurswahlModal from "../modals/KurswahlModal";
 import KursFormModal from "../modals/KursFormModal";
-import { IconButton } from "../ui/UI";
+import { Bell, Menu } from "lucide-react";
+import { IconButton, LogoMark } from "../ui/UI";
 import UebersichtPage from "../../pages/UebersichtPage";
 import KalenderPage from "../../pages/KalenderPage";
 import KursPage from "../../pages/KursPage";
@@ -65,10 +66,15 @@ export default function AppShell() {
               borderBottom: `1px solid ${t.border}`, background: t.surface, flexShrink: 0,
             }}
           >
-            <IconButton title="Menü" onClick={() => setDrawerOpen(true)}>☰</IconButton>
-            <span style={{ fontWeight: 800, fontSize: 15.5, color: t.text, flex: 1 }}>ClassSync</span>
+            <IconButton title="Menü" onClick={() => setDrawerOpen(true)}>
+              <Menu size={18} strokeWidth={1.8} />
+            </IconButton>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+              <LogoMark size={24} />
+              <span style={{ fontWeight: 700, fontSize: 15, color: t.text }}>ClassSync</span>
+            </span>
             <IconButton title="Benachrichtigungen" badge={unreadCount} onClick={() => setNotifOpen(true)}>
-              🔔
+              <Bell size={17} strokeWidth={1.8} />
             </IconButton>
           </header>
         )}

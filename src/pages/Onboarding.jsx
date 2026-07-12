@@ -62,7 +62,7 @@ export default function Onboarding() {
 
   return (
     <AuthLayout
-      title={`Hi, ${profile?.nickname || ""}! 👋`}
+      title={`Hi, ${profile?.nickname || ""}!`}
       subtitle="Tritt deiner Klasse bei oder erstelle eine neue."
     >
       <div style={{ display: "flex", gap: 4, background: t.surface2, borderRadius: radius.md, padding: 4, marginBottom: 20 }}>
