@@ -81,5 +81,7 @@ export async function deleteKlasse(klasseId) {
   for (const kurs of kurseSnap.docs) {
     await deleteKurs(klasseId, kurs.id);
   }
+  // Sammlungen (Klassenebene) aufräumen – vor dem Klassen-Doc (Rules lesen es per get())
+  await deleteSubcollection(["klassen", klasseId, "sammlungen"]);
   await deleteDoc(doc(db, "klassen", klasseId));
 }

@@ -121,6 +121,26 @@ service cloud.firestore {
           allow delete: if isKlassenAdmin(klasseId) || isKursAdmin(klasseId, kursId);
         }
       }
+
+      // Sammlungen: persönliche/geteilte Material-Zusammenstellungen (memberIds-Muster).
+      // [ownerId] = privat; weitere Mitglieder = geteilt/kollaborativ.
+      match /sammlungen/{sammlungId} {
+        allow read: if isMember(klasseId) && uid() in resource.data.memberIds;
+        allow create: if isMember(klasseId) &&
+          request.resource.data.ownerId == uid() &&
+          request.resource.data.memberIds == [uid()];
+        // Mitglieder dürfen items/memberIds ändern (Kollaboration + Selbst-Verlassen);
+        // Umbenennen/Freigabe-Verwaltung bleibt dem Owner vorbehalten.
+        allow update: if isMember(klasseId) && (
+          resource.data.ownerId == uid() ||
+          (uid() in resource.data.memberIds &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'memberIds']))
+        );
+        // Owner löscht die eigene Sammlung; Klassen-Admin zusätzlich für die Lösch-Kaskade.
+        allow delete: if isMember(klasseId) && (
+          resource.data.ownerId == uid() || isKlassenAdmin(klasseId)
+        );
+      }
     }
   }
 }

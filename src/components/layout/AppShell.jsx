@@ -11,6 +11,7 @@ import KursFormModal from "../modals/KursFormModal";
 import { Bell, Menu } from "lucide-react";
 import { IconButton, LogoMark } from "../ui/UI";
 import UebersichtPage from "../../pages/UebersichtPage";
+import BibliothekPage from "../../pages/BibliothekPage";
 import KalenderPage from "../../pages/KalenderPage";
 import KursPage from "../../pages/KursPage";
 import ProfilPage from "../../pages/ProfilPage";
@@ -95,6 +96,7 @@ export default function AppShell() {
         >
           <Routes>
             <Route path="/" element={<UebersichtPage />} />
+            <Route path="/bibliothek" element={<BibliothekPage />} />
             <Route path="/kalender" element={<KalenderPage />} />
             {/* Alter Menüpunkt zusammengelegt – Bookmarks weiterleiten */}
             <Route path="/stundenplan" element={<Navigate to="/kalender" replace />} />

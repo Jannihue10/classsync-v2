@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, Calendar, LayoutGrid, Moon, Plus, Settings2, Sun } from "lucide-react";
+import { Bell, Calendar, LayoutGrid, Library, Moon, Plus, Settings2, Sun } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useNotifications } from "../../context/NotificationContext";
@@ -68,6 +68,9 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
       <nav style={{ padding: "4px 10px", display: "grid", gap: 2 }}>
         <NavLink to="/" end style={navItemStyle} onClick={onNavigate}>
           <LayoutGrid size={16} strokeWidth={1.8} /> Übersicht
+        </NavLink>
+        <NavLink to="/bibliothek" style={navItemStyle} onClick={onNavigate}>
+          <Library size={16} strokeWidth={1.8} /> Bibliothek
         </NavLink>
         <NavLink to="/kalender" style={navItemStyle} onClick={onNavigate}>
           <Calendar size={16} strokeWidth={1.8} /> Kalender

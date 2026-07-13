@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Star, Trash2 } from "lucide-react";
+import { BookmarkPlus, ExternalLink, Star, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -12,7 +12,7 @@ import ConfirmDialog from "../modals/ConfirmDialog";
 import { canDeleteMaterial, deleteMaterial, toggleLike } from "./materialActions";
 
 // Vollansicht: PDF im iframe, Bild als img, Notiz als Text
-export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose }) {
+export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose, onAddToSammlung }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const { isKlassenAdmin } = useKlasse();
@@ -51,6 +51,11 @@ export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose }) {
                 <ExternalLink size={14} strokeWidth={1.8} /> Öffnen
               </Btn>
             </a>
+          )}
+          {onAddToSammlung && (
+            <Btn small variant="ghost" onClick={() => onAddToSammlung(mat)}>
+              <BookmarkPlus size={14} strokeWidth={1.8} /> Sammlung
+            </Btn>
           )}
           {canDeleteMaterial(mat, profile.uid, isKlassenAdmin, kurs) && (
             <Btn small variant="dangerGhost" onClick={() => setConfirmDelete(true)}>

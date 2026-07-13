@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, Trash2 } from "lucide-react";
+import { BookmarkPlus, Star, Trash2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -11,7 +11,9 @@ import { Tag } from "../ui/UI";
 import ConfirmDialog from "../modals/ConfirmDialog";
 import { canDeleteMaterial, deleteMaterial, toggleLike } from "./materialActions";
 
-export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
+// showKurs: zeigt zusätzlich einen Kurs-Chip (Bibliothek, kursübergreifend)
+// onAddToSammlung: rendert einen „Zu Sammlung"-Button; ohne Prop unverändert (KursPage)
+export default function MaterialCard({ mat, klasseId, kurs, onOpen, showKurs, onAddToSammlung }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const { isKlassenAdmin } = useKlasse();
@@ -57,6 +59,19 @@ export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
 
         {/* Info */}
         <div style={{ padding: "10px 12px 12px", display: "grid", gap: 6, flex: 1 }}>
+          {showKurs && kurs && (
+            <span
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600,
+                color: kurs.farbe, background: `${kurs.farbe}1a`, borderRadius: 999, padding: "2px 8px",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%",
+                justifySelf: "start",
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: kurs.farbe, flexShrink: 0 }} />
+              {kurs.name}
+            </span>
+          )}
           <div
             style={{
               fontSize: 13.5, fontWeight: 700, color: t.text, lineHeight: 1.35,
@@ -82,6 +97,18 @@ export default function MaterialCard({ mat, klasseId, kurs, onOpen }) {
                 <Star size={14} strokeWidth={1.8} fill={liked ? t.star : "none"} />
                 {likeCount > 0 && likeCount}
               </button>
+              {onAddToSammlung && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAddToSammlung(mat); }}
+                  title="Zu Sammlung hinzufügen"
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: t.textFaint, padding: "2px 4px", display: "flex", alignItems: "center",
+                  }}
+                >
+                  <BookmarkPlus size={14} strokeWidth={1.8} />
+                </button>
+              )}
               {canDeleteMaterial(mat, profile.uid, isKlassenAdmin, kurs) && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
