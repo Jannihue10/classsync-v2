@@ -31,7 +31,12 @@ service cloud.firestore {
         (resource.data.klasseId != null && me().klasseId == resource.data.klasseId)
       );
       allow create: if isAuth() && uid() == userId;
-      allow update: if isAuth() && uid() == userId;
+      // Eigenes Doc bearbeiten – aber einer Klasse nur beitreten, wenn dort nicht gesperrt
+      allow update: if isAuth() && uid() == userId && (
+        request.resource.data.klasseId == null ||
+        request.resource.data.klasseId == resource.data.klasseId ||
+        !(uid() in get(/databases/$(database)/documents/klassen/$(request.resource.data.klasseId)).data.get('bannedIds', []))
+      );
       allow delete: if false;
     }
 

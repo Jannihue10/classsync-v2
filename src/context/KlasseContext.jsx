@@ -18,11 +18,12 @@ export function KlasseProvider({ klasseId, children }) {
     const unsub = onSnapshot(
       doc(db, "klassen", klasseId),
       (snap) => {
-        if (snap.exists()) {
-          setKlasse({ id: snap.id, ...snap.data() });
-        } else {
+        // Klasse gelöscht ODER man wurde gesperrt -> sich selbst ins Onboarding werfen
+        if (!snap.exists() || snap.data().bannedIds?.includes(profile.uid)) {
           setKlasse(null);
           updateDoc(doc(db, "users", profile.uid), { klasseId: null }).catch(() => {});
+        } else {
+          setKlasse({ id: snap.id, ...snap.data() });
         }
         setKlasseLoading(false);
       },

@@ -1,5 +1,5 @@
 import {
-  addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc,
+  addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc,
   getDocs, query, updateDoc, where, writeBatch,
 } from "firebase/firestore";
 import { deleteObject, listAll, ref as storageRef } from "firebase/storage";
@@ -29,7 +29,14 @@ export async function joinByCode(code, uid) {
     query(collection(db, "klassen"), where("code", "==", code.trim().toUpperCase()))
   );
   if (snap.empty) throw new Error("Keine Klasse mit diesem Code gefunden.");
-  const klasseId = snap.docs[0].id;
+  const klasseDoc = snap.docs[0];
+  // Gesperrte vor dem Schreiben abfangen – sonst würde der optimistische Write kurz
+  // die App rendern und das Onboarding (samt Fehler-State) unmounten. Die Rule sichert
+  // es serverseitig zusätzlich ab.
+  if ((klasseDoc.data().bannedIds || []).includes(uid)) {
+    throw new Error("Du wurdest aus dieser Klasse entfernt und kannst ihr nicht erneut beitreten.");
+  }
+  const klasseId = klasseDoc.id;
   await updateDoc(doc(db, "users", uid), { klasseId });
   return klasseId;
 }
@@ -47,6 +54,47 @@ export function setKursMembership(klasseId, kursId, uid, join) {
   return updateDoc(doc(db, "klassen", klasseId, "kurse", kursId), {
     memberIds: join ? arrayUnion(uid) : arrayRemove(uid),
   });
+}
+
+// Mitglied aus der Klasse sperren (Ban): uid in bannedIds, aus adminIds + allen Kursen
+// entfernen, Nickname für die Entsperren-Liste festhalten. Der betroffene Client wirft
+// sich per KlasseContext-Listener selbst raus (klasseId: null → Onboarding).
+export async function banFromKlasse(klasseId, user, kurse = []) {
+  const { uid, nickname } = user;
+  await Promise.all(
+    kurse
+      .filter((k) => k.memberIds?.includes(uid))
+      .map((k) => setKursMembership(klasseId, k.id, uid, false))
+  );
+  await updateDoc(doc(db, "klassen", klasseId), {
+    bannedIds: arrayUnion(uid),
+    adminIds: arrayRemove(uid),
+    [`bannedInfo.${uid}`]: nickname || "Unbekannt",
+  });
+}
+
+// Sperre aufheben: uid aus bannedIds und den gespeicherten Nickname entfernen.
+export function unbanFromKlasse(klasseId, uid) {
+  return updateDoc(doc(db, "klassen", klasseId), {
+    bannedIds: arrayRemove(uid),
+    [`bannedInfo.${uid}`]: deleteField(),
+  });
+}
+
+// Klasse selbst verlassen: aus allen eigenen Kursen austreten, ggf. aus adminIds
+// entfernen, eigene klasseId nullen (landet im Onboarding).
+// isAdmin-Guard: nur Admins dürfen das Klassen-Doc schreiben (Rule), sonst würde die
+// adminIds-Zeile mit permission-denied fehlschlagen und das klasseId-Nullen verhindern.
+export async function leaveKlasse(klasseId, uid, kurse = [], isAdmin = false) {
+  await Promise.all(
+    kurse
+      .filter((k) => k.memberIds?.includes(uid))
+      .map((k) => setKursMembership(klasseId, k.id, uid, false))
+  );
+  if (isAdmin) {
+    await updateDoc(doc(db, "klassen", klasseId), { adminIds: arrayRemove(uid) });
+  }
+  await updateDoc(doc(db, "users", uid), { klasseId: null });
 }
 
 async function deleteSubcollection(pathSegments) {

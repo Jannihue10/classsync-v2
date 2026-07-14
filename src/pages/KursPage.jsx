@@ -15,6 +15,7 @@ import { useIsWide } from "../lib/useMediaQuery";
 import { radius } from "../styles/theme";
 import { Btn, Empty } from "../components/ui/UI";
 import KursFormModal from "../components/modals/KursFormModal";
+import KursMitgliederModal from "../components/modals/KursMitgliederModal";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import MaterialGrid from "../components/kurs/MaterialGrid";
 import HASection from "../components/kurs/HASection";
@@ -34,6 +35,7 @@ export default function KursPage() {
 
   const [rawTab, setTab] = useState("material");
   const [editOpen, setEditOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { docs: hausaufgaben } = useKursCollection(klasse?.id, kursId, "hausaufgaben");
@@ -118,6 +120,9 @@ export default function KursPage() {
               <Plus size={14} strokeWidth={2} /> Beitreten
             </Btn>
           )}
+          <Btn small variant="ghost" onClick={() => setMembersOpen(true)}>
+            <Users size={14} strokeWidth={1.8} /> Mitglieder
+          </Btn>
           {canManageKurs(kurs) && (
             <>
               <Btn small variant="ghost" onClick={() => setEditOpen(true)}>
@@ -184,6 +189,7 @@ export default function KursPage() {
       </div>
 
       {editOpen && <KursFormModal kurs={kurs} onClose={() => setEditOpen(false)} />}
+      {membersOpen && <KursMitgliederModal kurs={kurs} onClose={() => setMembersOpen(false)} />}
       {deleteOpen && (
         <ConfirmDialog
           title="Kurs löschen?"

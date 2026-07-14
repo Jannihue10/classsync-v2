@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Crown, Moon, Settings2, Sun, Trash2, TriangleAlert, User } from "lucide-react";
+import { Check, Copy, Crown, LogOut, Moon, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
-import { deleteKlasse, demoteAdmin, promoteAdmin } from "../lib/klasseActions";
+import { banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse, promoteAdmin, unbanFromKlasse } from "../lib/klasseActions";
 import { radius } from "../styles/theme";
 import { Btn, Card, Divider, Input, SectionTitle, Spinner } from "../components/ui/UI";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
@@ -14,13 +14,15 @@ import PageHeader from "../components/layout/PageHeader";
 export default function ProfilPage({ onOpenKurswahl }) {
   const { t, toggle, mode } = useTheme();
   const { profile, logout, updateProfile } = useAuth();
-  const { klasse, isKlassenAdmin } = useKlasse();
+  const { klasse, kurse, isKlassenAdmin } = useKlasse();
 
   const [nickname, setNickname] = useState(profile.nickname);
   const [nickBusy, setNickBusy] = useState(false);
   const [nickSaved, setNickSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [banTarget, setBanTarget] = useState(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
 
   // Klassenmitglieder live
   const [mitglieder, setMitglieder] = useState(null);
@@ -54,6 +56,10 @@ export default function ProfilPage({ onOpenKurswahl }) {
   }
 
   const adminIds = klasse.adminIds || [];
+  const bannedIds = klasse.bannedIds || [];
+  const bannedInfo = klasse.bannedInfo || {};
+  const binIchAdmin = adminIds.includes(profile.uid);
+  const letzterAdminIch = binIchAdmin && adminIds.length === 1;
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "20px 20px 40px" }}>
@@ -146,6 +152,17 @@ export default function ProfilPage({ onOpenKurswahl }) {
           <p style={{ margin: "10px 0 0", fontSize: 12.5, color: t.textFaint }}>
             Mit diesem Code können Mitschüler deiner Klasse beitreten.
           </p>
+          <Divider />
+          {letzterAdminIch ? (
+            <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
+              Als letzter Admin kannst du die Klasse nicht verlassen – übertrage zuerst die Admin-Rolle
+              oder lösche die Klasse.
+            </p>
+          ) : (
+            <Btn small variant="dangerGhost" onClick={() => setLeaveOpen(true)}>
+              <LogOut size={13.5} strokeWidth={1.8} /> Klasse verlassen
+            </Btn>
+          )}
         </Card>
 
         {/* Mitglieder */}
@@ -156,6 +173,7 @@ export default function ProfilPage({ onOpenKurswahl }) {
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
               {mitglieder.map((m) => {
+                const istGebannt = bannedIds.includes(m.uid);
                 const istAdmin = adminIds.includes(m.uid);
                 const istIch = m.uid === profile.uid;
                 const letzterAdmin = istAdmin && adminIds.length === 1;
@@ -165,46 +183,96 @@ export default function ProfilPage({ onOpenKurswahl }) {
                     style={{
                       display: "flex", alignItems: "center", gap: 10, padding: "8px 11px",
                       background: t.surface2, borderRadius: radius.sm, border: `1px solid ${t.border}`,
+                      opacity: istGebannt ? 0.5 : 1,
                     }}
                   >
                     <span
                       style={{
                         width: 30, height: 30, borderRadius: 999,
-                        background: istAdmin ? t.warningSoft : t.accentSoft,
-                        color: istAdmin ? t.warning : t.accent,
+                        background: istGebannt ? t.dangerSoft : istAdmin ? t.warningSoft : t.accentSoft,
+                        color: istGebannt ? t.danger : istAdmin ? t.warning : t.accent,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 13, fontWeight: 700, flexShrink: 0,
                       }}
                     >
                       {m.nickname?.[0]?.toUpperCase() || "?"}
                     </span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: istGebannt ? "line-through" : "none" }}>
                       {m.nickname} {istIch && <span style={{ color: t.textFaint }}>(du)</span>}
                     </span>
-                    {istAdmin && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: t.warning, background: t.warningSoft, borderRadius: 999, padding: "2px 9px", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Crown size={11} strokeWidth={1.8} /> Admin
+                    {istGebannt ? (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: t.danger, background: t.dangerSoft, borderRadius: 999, padding: "2px 9px" }}>
+                        Gesperrt
                       </span>
-                    )}
-                    {isKlassenAdmin && !istAdmin && (
-                      <Btn small variant="soft" onClick={() => promoteAdmin(klasse.id, m.uid)}>
-                        <Crown size={13} strokeWidth={1.8} /> Zum Admin
-                      </Btn>
-                    )}
-                    {isKlassenAdmin && istAdmin && !letzterAdmin && (
-                      <Btn small variant="ghost" onClick={() => demoteAdmin(klasse.id, m.uid)}>
-                        Admin entfernen
-                      </Btn>
-                    )}
-                    {isKlassenAdmin && letzterAdmin && (
-                      <span style={{ fontSize: 11, color: t.textFaint }} title="Der letzte Admin kann nicht entfernt werden">
-                        letzter Admin
-                      </span>
+                    ) : (
+                      <>
+                        {istAdmin && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: t.warning, background: t.warningSoft, borderRadius: 999, padding: "2px 9px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Crown size={11} strokeWidth={1.8} /> Admin
+                          </span>
+                        )}
+                        {isKlassenAdmin && !istAdmin && (
+                          <Btn small variant="soft" onClick={() => promoteAdmin(klasse.id, m.uid)}>
+                            <Crown size={13} strokeWidth={1.8} /> Zum Admin
+                          </Btn>
+                        )}
+                        {isKlassenAdmin && !istAdmin && !istIch && (
+                          <Btn small variant="dangerGhost" onClick={() => setBanTarget(m)}>
+                            <UserMinus size={13} strokeWidth={1.8} /> Entfernen
+                          </Btn>
+                        )}
+                        {isKlassenAdmin && istAdmin && !letzterAdmin && (
+                          <Btn small variant="ghost" onClick={() => demoteAdmin(klasse.id, m.uid)}>
+                            Admin entfernen
+                          </Btn>
+                        )}
+                        {isKlassenAdmin && letzterAdmin && (
+                          <span style={{ fontSize: 11, color: t.textFaint }} title="Der letzte Admin kann nicht entfernt werden">
+                            letzter Admin
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 );
               })}
             </div>
+          )}
+
+          {isKlassenAdmin && bannedIds.length > 0 && (
+            <>
+              <Divider />
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textMuted, marginBottom: 8 }}>
+                Gesperrt ({bannedIds.length})
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {bannedIds.map((uid) => (
+                  <div
+                    key={uid}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 11px",
+                      background: t.surface2, borderRadius: radius.sm, border: `1px solid ${t.border}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 30, height: 30, borderRadius: 999, background: t.dangerSoft, color: t.danger,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, fontWeight: 700, flexShrink: 0,
+                      }}
+                    >
+                      {bannedInfo[uid]?.[0]?.toUpperCase() || "?"}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: t.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {bannedInfo[uid] || "Unbekannt"}
+                    </span>
+                    <Btn small variant="soft" onClick={() => unbanFromKlasse(klasse.id, uid)}>
+                      Entsperren
+                    </Btn>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </Card>
 
@@ -232,6 +300,26 @@ export default function ProfilPage({ onOpenKurswahl }) {
           confirmLabel="Ja, alles löschen"
           onConfirm={() => deleteKlasse(klasse.id)}
           onClose={() => setDeleteOpen(false)}
+        />
+      )}
+
+      {banTarget && (
+        <ConfirmDialog
+          title={`${banTarget.nickname} entfernen?`}
+          text={`${banTarget.nickname} wird aus der Klasse und allen Kursen entfernt und kann mit dem Code nicht wieder beitreten, bis du die Sperre aufhebst.`}
+          confirmLabel="Entfernen & sperren"
+          onConfirm={() => banFromKlasse(klasse.id, banTarget, kurse)}
+          onClose={() => setBanTarget(null)}
+        />
+      )}
+
+      {leaveOpen && (
+        <ConfirmDialog
+          title="Klasse verlassen?"
+          text={`Du verlässt „${klasse.name}" und wirst aus all deinen Kursen entfernt. Du kannst später mit dem Code wieder beitreten.`}
+          confirmLabel="Klasse verlassen"
+          onConfirm={() => leaveKlasse(klasse.id, profile.uid, kurse, binIchAdmin)}
+          onClose={() => setLeaveOpen(false)}
         />
       )}
     </div>
