@@ -120,9 +120,21 @@ service cloud.firestore {
           allow read: if isMember(klasseId);
           allow create: if isMember(klasseId) &&
             request.resource.data.autorId == uid();
-          allow update: if false;
-          // Einzelne Nachrichten kann niemand über die UI löschen –
-          // delete brauchen aber Klassen-/Kurs-Admin für die Lösch-Kaskade (Kurs/Klasse löschen)
+          // Bearbeiten (Autor) + Löschen als Tombstone (Autor/Kurs-/Klassen-Admin)
+          allow update: if isMember(klasseId) && (
+            // Autor bearbeitet eigenen Text (nicht auf bereits gelöschten Nachrichten)
+            ( resource.data.autorId == uid() &&
+              resource.data.get('deleted', false) == false &&
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['text', 'editedAt']) ) ||
+            // Tombstone-Löschen: Autor ODER Kurs-/Klassen-Admin; setzt deleted + leert text
+            ( (isKlassenAdmin(klasseId) || isKursAdmin(klasseId, kursId) ||
+               resource.data.autorId == uid()) &&
+              request.resource.data.deleted == true &&
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['deleted', 'text']) )
+          );
+          // Hard-delete: Klassen-/Kurs-Admin – nur für die Lösch-Kaskade (Kurs/Klasse löschen)
           allow delete: if isKlassenAdmin(klasseId) || isKursAdmin(klasseId, kursId);
         }
       }
