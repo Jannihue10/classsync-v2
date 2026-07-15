@@ -7,6 +7,7 @@ import { useTheme } from "./context/ThemeContext";
 import { Spinner } from "./components/ui/UI";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
 import Onboarding from "./pages/Onboarding";
 import AppShell from "./components/layout/AppShell";
 import AuthLayout from "./components/layout/AuthLayout";
@@ -21,7 +22,7 @@ export default function App() {
 }
 
 function Gate() {
-  const { user, profile, loading, profileLoading } = useAuth();
+  const { user, profile, emailVerified, loading, profileLoading } = useAuth();
   const [authMode, setAuthMode] = useState(() =>
     new URLSearchParams(window.location.search).get("register") === "true" ? "register" : "login"
   );
@@ -35,6 +36,9 @@ function Gate() {
       <Login onSwitchToRegister={() => setAuthMode("register")} />
     );
   }
+
+  // Eingeloggt, aber E-Mail noch nicht bestätigt -> harte Sperre (neue wie bestehende Nutzer)
+  if (!emailVerified) return <VerifyEmail />;
 
   // Eingeloggt, aber Firestore-Profil lädt noch (oder wird gerade beim Registrieren angelegt)
   if (profileLoading || !profile) return <FullSpinner />;

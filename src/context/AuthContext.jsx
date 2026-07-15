@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
@@ -14,12 +15,14 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null); // Firestore users/{uid}
+  const [emailVerified, setEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true); // Auth-Status noch unbekannt
   const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
+      setEmailVerified(u?.emailVerified ?? false);
       setLoading(false);
       if (!u) setProfile(null);
     });
@@ -62,13 +65,27 @@ export function AuthProvider({ children }) {
     return sendPasswordResetEmail(auth, email.trim());
   }
 
+  // Verifizierungs-E-Mail senden (manueller Resend im VerifyEmail-Screen)
+  function sendVerification() {
+    return sendEmailVerification(auth.currentUser);
+  }
+
+  // Aktuellen Auth-Status neu laden (on-demand, kein Polling) und emailVerified spiegeln.
+  // reload() löst onAuthStateChanged NICHT aus -> State hier manuell aktualisieren.
+  async function reloadVerification() {
+    await auth.currentUser.reload();
+    const verified = auth.currentUser.emailVerified;
+    setEmailVerified(verified);
+    return verified;
+  }
+
   function updateProfile(fields) {
     return updateDoc(doc(db, "users", user.uid), fields);
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, profileLoading, register, login, logout, resetPassword, updateProfile }}
+      value={{ user, profile, emailVerified, loading, profileLoading, register, login, logout, resetPassword, sendVerification, reloadVerification, updateProfile }}
     >
       {children}
     </AuthContext.Provider>
