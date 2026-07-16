@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "./AuthContext";
 
@@ -12,16 +12,16 @@ export function KlasseProvider({ klasseId, children }) {
   const [klasseLoading, setKlasseLoading] = useState(true);
   const [kurseLoading, setKurseLoading] = useState(true);
 
-  // Klassen-Doc live beobachten; wird die Klasse gelöscht -> klasseId am User zurücksetzen
+  // Aktive Klasse live beobachten. Die Selbst-Eviction (Klasse gelöscht ODER gesperrt ->
+  // aus klasseIds entfernen) übernimmt der MembershipsProvider klassenübergreifend; hier
+  // wird bei fehlendem/gesperrtem Doc nur klasse=null gesetzt (Gate zeigt kurz einen Spinner).
   useEffect(() => {
     setKlasseLoading(true);
     const unsub = onSnapshot(
       doc(db, "klassen", klasseId),
       (snap) => {
-        // Klasse gelöscht ODER man wurde gesperrt -> sich selbst ins Onboarding werfen
         if (!snap.exists() || snap.data().bannedIds?.includes(profile.uid)) {
           setKlasse(null);
-          updateDoc(doc(db, "users", profile.uid), { klasseId: null }).catch(() => {});
         } else {
           setKlasse({ id: snap.id, ...snap.data() });
         }

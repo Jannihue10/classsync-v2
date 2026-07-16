@@ -18,7 +18,7 @@ export default function ShareSammlungModal({ sammlung, onClose }) {
 
   // Klassenmitglieder live (gleiches Muster wie ProfilPage)
   useEffect(() => {
-    const q = query(collection(db, "users"), where("klasseId", "==", klasse.id));
+    const q = query(collection(db, "users"), where("klasseIds", "array-contains", klasse.id));
     return onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
       list.sort((a, b) => a.nickname.localeCompare(b.nickname, "de"));

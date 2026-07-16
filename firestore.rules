@@ -12,7 +12,7 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(uid())).data;
     }
     function isMember(klasseId) {
-      return isAuth() && me().klasseId == klasseId;
+      return isAuth() && klasseId in me().get('klasseIds', []);
     }
     function isKlassenAdmin(klasseId) {
       return isMember(klasseId) &&
@@ -25,18 +25,29 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Lesen: sich selbst oder Mitglieder der eigenen Klasse
+      // Lesen: sich selbst oder wer mindestens eine Klasse mit einem teilt (Klassenkameraden)
       allow read: if isAuth() && (
         uid() == userId ||
-        (resource.data.klasseId != null && me().klasseId == resource.data.klasseId)
+        resource.data.get('klasseIds', []).hasAny(me().get('klasseIds', []))
       );
       allow create: if isAuth() && uid() == userId;
-      // Eigenes Doc bearbeiten – aber einer Klasse nur beitreten, wenn dort nicht gesperrt
-      allow update: if isAuth() && uid() == userId && (
-        request.resource.data.klasseId == null ||
-        request.resource.data.klasseId == resource.data.klasseId ||
-        !(uid() in get(/databases/$(database)/documents/klassen/$(request.resource.data.klasseId)).data.get('bannedIds', []))
-      );
+      // Eigenes Doc bearbeiten. Multi-Klassen:
+      //  - activeKlasseId muss null oder eine der eigenen Klassen sein
+      //  - beim HINZUFÜGEN einer Klasse (klasseIds wächst) darf nur genau die neue aktive Klasse
+      //    dazukommen und man darf dort nicht gesperrt sein (Ban-Schutz). Entfernen/Umsortieren frei.
+      allow update: if isAuth() && uid() == userId
+        && ( request.resource.data.get('activeKlasseId', null) == null ||
+             request.resource.data.activeKlasseId in request.resource.data.get('klasseIds', []) )
+        && (
+          request.resource.data.get('klasseIds', []).toSet()
+            .difference(resource.data.get('klasseIds', []).toSet()).size() == 0 ||
+          ( request.resource.data.get('klasseIds', []).toSet()
+              .difference(resource.data.get('klasseIds', []).toSet())
+              .hasOnly([request.resource.data.activeKlasseId]) &&
+            request.resource.data.get('klasseIds', []).toSet()
+              .difference(resource.data.get('klasseIds', []).toSet()).size() == 1 &&
+            !(uid() in get(/databases/$(database)/documents/klassen/$(request.resource.data.activeKlasseId)).data.get('bannedIds', [])) )
+        );
       allow delete: if false;
     }
 
@@ -142,7 +153,11 @@ service cloud.firestore {
       // Sammlungen: persönliche/geteilte Material-Zusammenstellungen (memberIds-Muster).
       // [ownerId] = privat; weitere Mitglieder = geteilt/kollaborativ.
       match /sammlungen/{sammlungId} {
-        allow read: if isMember(klasseId) && uid() in resource.data.memberIds;
+        // Sammlungs-Mitglieder lesen ihre Sammlung; Klassen-Admin darf zusätzlich lesen –
+        // nötig, damit die Lösch-Kaskade (deleteKlasse) alle Sammlungen auflisten kann.
+        // Kein UI-Privacy-Leak: die Bibliothek fragt nur where memberIds array-contains uid ab.
+        allow read: if isMember(klasseId) &&
+          (uid() in resource.data.memberIds || isKlassenAdmin(klasseId));
         allow create: if isMember(klasseId) &&
           request.resource.data.ownerId == uid() &&
           request.resource.data.memberIds == [uid()];

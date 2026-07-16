@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Crown, LogOut, Moon, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
+import { ArrowRightLeft, Check, Copy, Crown, GraduationCap, LogOut, Moon, Plus, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { useKlasse } from "../context/KlasseContext";
+import { useMemberships } from "../context/MembershipsContext";
 import { useTheme } from "../context/ThemeContext";
-import { banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse, promoteAdmin, unbanFromKlasse } from "../lib/klasseActions";
+import { acceptMigration, banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse, promoteAdmin, switchActiveKlasse, unbanFromKlasse } from "../lib/klasseActions";
 import { radius } from "../styles/theme";
 import { Btn, Card, Divider, Input, SectionTitle, Spinner } from "../components/ui/UI";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
+import MigrateKlasseModal from "../components/modals/MigrateKlasseModal";
 import PageHeader from "../components/layout/PageHeader";
 
-export default function ProfilPage({ onOpenKurswahl }) {
+export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
   const { t, toggle, mode } = useTheme();
   const { profile, logout, updateProfile } = useAuth();
   const { klasse, kurse, isKlassenAdmin } = useKlasse();
+  const { myClasses, openMigrations } = useMemberships();
+  const [inviteBusy, setInviteBusy] = useState(null);
 
   const [nickname, setNickname] = useState(profile.nickname);
   const [nickBusy, setNickBusy] = useState(false);
@@ -23,11 +27,13 @@ export default function ProfilPage({ onOpenKurswahl }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [banTarget, setBanTarget] = useState(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // Klassenmitglieder live
   const [mitglieder, setMitglieder] = useState(null);
   useEffect(() => {
-    const q = query(collection(db, "users"), where("klasseId", "==", klasse.id));
+    const q = query(collection(db, "users"), where("klasseIds", "array-contains", klasse.id));
     return onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
       list.sort((a, b) => a.nickname.localeCompare(b.nickname, "de"));
@@ -106,6 +112,94 @@ export default function ProfilPage({ onOpenKurswahl }) {
           </div>
         </Card>
 
+        {/* Deine Klassen (Multi-Klassen-Wechsler) */}
+        <Card style={{ padding: 18 }}>
+          <SectionTitle
+            action={
+              <Btn small variant="soft" onClick={onOpenAddKlasse}>
+                <Plus size={14} strokeWidth={2} /> Klasse hinzufügen
+              </Btn>
+            }
+          >
+            Deine Klassen
+          </SectionTitle>
+          <div style={{ display: "grid", gap: 6 }}>
+            {myClasses.map((c) => {
+              const aktiv = c.id === klasse.id;
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 11px",
+                    background: t.surface2, borderRadius: radius.sm,
+                    border: `1px solid ${aktiv ? `${t.accent}66` : t.border}`,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 30, height: 30, borderRadius: 8, background: t.accentSoft, color: t.accent,
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}
+                  >
+                    <GraduationCap size={16} strokeWidth={1.8} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.name}
+                  </span>
+                  {aktiv ? (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: t.accent, background: t.accentSoft, borderRadius: 999, padding: "2px 9px" }}>
+                      Aktiv
+                    </span>
+                  ) : (
+                    <Btn small variant="soft" onClick={() => switchActiveKlasse(profile.uid, c.id)}>
+                      <ArrowRightLeft size={13} strokeWidth={1.8} /> Wechseln
+                    </Btn>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Offene Migrations-Einladungen (auch nach „Später" hier annehmbar) */}
+          {openMigrations.length > 0 && (
+            <>
+              <Divider />
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: t.textMuted, marginBottom: 8 }}>
+                Offene Einladungen ({openMigrations.length})
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {openMigrations.map((p) => (
+                  <div
+                    key={p.migration.id}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 11px",
+                      background: t.accentSoft, borderRadius: radius.sm, border: `1px solid ${t.accent}44`,
+                    }}
+                  >
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: t.surface, color: t.accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <ArrowRightLeft size={15} strokeWidth={1.8} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <b>{p.migration.targetName}</b> <span style={{ color: t.textMuted }}>(aus „{p.sourceName}")</span>
+                    </span>
+                    <Btn
+                      small
+                      disabled={inviteBusy === p.migration.id}
+                      onClick={async () => {
+                        setInviteBusy(p.migration.id);
+                        try { await acceptMigration(profile.uid, p.migration); }
+                        catch { setInviteBusy(null); }
+                      }}
+                    >
+                      {inviteBusy === p.migration.id ? "Beitreten…" : "Beitreten"}
+                    </Btn>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Card>
+
         {/* Klasse */}
         <Card style={{ padding: 18 }}>
           <SectionTitle
@@ -115,7 +209,7 @@ export default function ProfilPage({ onOpenKurswahl }) {
               </Btn>
             }
           >
-            Deine Klasse
+            Aktive Klasse
           </SectionTitle>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 180 }}>
@@ -153,16 +247,24 @@ export default function ProfilPage({ onOpenKurswahl }) {
             Mit diesem Code können Mitschüler deiner Klasse beitreten.
           </p>
           <Divider />
-          {letzterAdminIch ? (
-            <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
-              Als letzter Admin kannst du die Klasse nicht verlassen – übertrage zuerst die Admin-Rolle
-              oder lösche die Klasse.
-            </p>
-          ) : (
-            <Btn small variant="dangerGhost" onClick={() => setLeaveOpen(true)}>
-              <LogOut size={13.5} strokeWidth={1.8} /> Klasse verlassen
-            </Btn>
-          )}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            {isKlassenAdmin && (
+              <Btn small variant="soft" onClick={() => setMigrateOpen(true)}>
+                <ArrowRightLeft size={13.5} strokeWidth={1.8} />
+                {klasse.migration ? "Migration verwalten" : "Ins neue Schuljahr übernehmen"}
+              </Btn>
+            )}
+            {letzterAdminIch ? (
+              <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
+                Als letzter Admin kannst du die Klasse nicht verlassen – übertrage zuerst die Admin-Rolle
+                oder lösche die Klasse.
+              </p>
+            ) : (
+              <Btn small variant="dangerGhost" onClick={() => setLeaveOpen(true)}>
+                <LogOut size={13.5} strokeWidth={1.8} /> Klasse verlassen
+              </Btn>
+            )}
+          </div>
         </Card>
 
         {/* Mitglieder */}
@@ -286,9 +388,14 @@ export default function ProfilPage({ onOpenKurswahl }) {
               Löscht die Klasse mit allen Kursen, Materialien, Hausaufgaben, Prüfungen und Chats – endgültig.
               Alle Mitglieder landen wieder im Onboarding.
             </p>
-            <Btn small variant="dangerGhost" onClick={() => setDeleteOpen(true)}>
+            <Btn small variant="dangerGhost" onClick={() => { setDeleteError(""); setDeleteOpen(true); }}>
               <Trash2 size={13.5} strokeWidth={1.8} /> Klasse löschen
             </Btn>
+            {deleteError && (
+              <p style={{ margin: "12px 0 0", fontSize: 12.5, color: t.danger, lineHeight: 1.5, wordBreak: "break-word" }}>
+                Löschen fehlgeschlagen: {deleteError}
+              </p>
+            )}
           </Card>
         )}
       </div>
@@ -298,7 +405,15 @@ export default function ProfilPage({ onOpenKurswahl }) {
           title="Klasse endgültig löschen?"
           text={`„${klasse.name}" wird mit allen Kursen und Inhalten unwiderruflich gelöscht. Alle ${mitglieder?.length ?? ""} Mitglieder verlieren den Zugriff.`}
           confirmLabel="Ja, alles löschen"
-          onConfirm={() => deleteKlasse(klasse.id)}
+          onConfirm={async () => {
+            try {
+              await deleteKlasse(klasse.id);
+            } catch (e) {
+              // Fehler sichtbar machen (ConfirmDialog schluckt ihn sonst): Code + Meldung
+              console.error("Klasse löschen fehlgeschlagen:", e);
+              setDeleteError(e?.code ? `${e.code} — ${e.message}` : (e?.message || String(e)));
+            }
+          }}
           onClose={() => setDeleteOpen(false)}
         />
       )}
@@ -318,8 +433,17 @@ export default function ProfilPage({ onOpenKurswahl }) {
           title="Klasse verlassen?"
           text={`Du verlässt „${klasse.name}" und wirst aus all deinen Kursen entfernt. Du kannst später mit dem Code wieder beitreten.`}
           confirmLabel="Klasse verlassen"
-          onConfirm={() => leaveKlasse(klasse.id, profile.uid, kurse, binIchAdmin)}
+          onConfirm={() => leaveKlasse(klasse.id, profile.uid, kurse, binIchAdmin, profile.klasseIds || [], profile.activeKlasseId)}
           onClose={() => setLeaveOpen(false)}
+        />
+      )}
+
+      {migrateOpen && (
+        <MigrateKlasseModal
+          klasse={klasse}
+          mitglieder={mitglieder}
+          myClasses={myClasses}
+          onClose={() => setMigrateOpen(false)}
         />
       )}
     </div>

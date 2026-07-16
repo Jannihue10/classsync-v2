@@ -5,18 +5,18 @@ service firebase.storage {
       // Voraussetzung: Storage-Dienstkonto hat IAM-Rolle "Cloud Datastore User"
       // (für den cross-service firestore.get()-Zugriff)
       allow read: if request.auth != null &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
-          .data.klasseId == klasseId;
+        klasseId in firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+          .data.get('klasseIds', []);
       allow create: if request.auth != null &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
-          .data.klasseId == klasseId &&
+        klasseId in firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+          .data.get('klasseIds', []) &&
         request.resource.size <= 10 * 1024 * 1024 &&
         (request.resource.contentType == 'application/pdf' ||
          request.resource.contentType.matches('image/.*'));
       allow update: if false;
       allow delete: if request.auth != null &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
-          .data.klasseId == klasseId;
+        klasseId in firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+          .data.get('klasseIds', []);
     }
   }
 }

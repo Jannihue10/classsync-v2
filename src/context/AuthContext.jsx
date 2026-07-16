@@ -28,14 +28,30 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  // Live-Profil aus Firestore (Nickname-Änderungen, klasseId-Wechsel)
+  // Live-Profil aus Firestore (Nickname-Änderungen, Klassen-Wechsel)
   useEffect(() => {
     if (!user) return;
     setProfileLoading(true);
     const unsub = onSnapshot(
       doc(db, "users", user.uid),
       (snap) => {
-        setProfile(snap.exists() ? { uid: user.uid, ...snap.data() } : null);
+        if (snap.exists()) {
+          const data = snap.data();
+          // Lazy-Migration Alt->Neu: Einzel-klasseId -> klasseIds[] + activeKlasseId
+          if (data.klasseIds === undefined && "klasseId" in data) {
+            const legacy = data.klasseId || null;
+            updateDoc(doc(db, "users", user.uid), {
+              klasseIds: legacy ? [legacy] : [],
+              activeKlasseId: legacy,
+            }).catch(() => {});
+            // lokal sofort spiegeln, damit das Gate nicht kurz ins Onboarding fällt
+            data.klasseIds = legacy ? [legacy] : [];
+            data.activeKlasseId = legacy;
+          }
+          setProfile({ uid: user.uid, ...data });
+        } else {
+          setProfile(null);
+        }
         setProfileLoading(false);
       },
       () => setProfileLoading(false)
@@ -48,7 +64,8 @@ export function AuthProvider({ children }) {
     await setDoc(doc(db, "users", cred.user.uid), {
       nickname: nickname.trim(),
       email: email.trim(),
-      klasseId: null,
+      klasseIds: [],
+      activeKlasseId: null,
       createdAt: Date.now(),
     });
   }

@@ -1,6 +1,6 @@
 import {
   addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc,
-  getDocs, query, updateDoc, where, writeBatch,
+  getDoc, getDocs, query, updateDoc, where, writeBatch,
 } from "firebase/firestore";
 import { deleteObject, listAll, ref as storageRef } from "firebase/storage";
 import { db, storage } from "./firebase";
@@ -20,7 +20,11 @@ export async function createKlasse(name, uid) {
     adminIds: [uid],
     createdAt: Date.now(),
   });
-  await updateDoc(doc(db, "users", uid), { klasseId: klasseRef.id });
+  // Neue Klasse zur Mitgliedschaft hinzufügen und direkt aktiv schalten
+  await updateDoc(doc(db, "users", uid), {
+    klasseIds: arrayUnion(klasseRef.id),
+    activeKlasseId: klasseRef.id,
+  });
   return klasseRef.id;
 }
 
@@ -31,14 +35,21 @@ export async function joinByCode(code, uid) {
   if (snap.empty) throw new Error("Keine Klasse mit diesem Code gefunden.");
   const klasseDoc = snap.docs[0];
   // Gesperrte vor dem Schreiben abfangen – sonst würde der optimistische Write kurz
-  // die App rendern und das Onboarding (samt Fehler-State) unmounten. Die Rule sichert
-  // es serverseitig zusätzlich ab.
+  // die App rendern. Die Rule sichert es serverseitig zusätzlich ab.
   if ((klasseDoc.data().bannedIds || []).includes(uid)) {
     throw new Error("Du wurdest aus dieser Klasse entfernt und kannst ihr nicht erneut beitreten.");
   }
   const klasseId = klasseDoc.id;
-  await updateDoc(doc(db, "users", uid), { klasseId });
+  await updateDoc(doc(db, "users", uid), {
+    klasseIds: arrayUnion(klasseId),
+    activeKlasseId: klasseId,
+  });
   return klasseId;
+}
+
+// Zwischen den eigenen Klassen wechseln (aktive Klasse am User-Doc)
+export function switchActiveKlasse(uid, klasseId) {
+  return updateDoc(doc(db, "users", uid), { activeKlasseId: klasseId });
 }
 
 export function promoteAdmin(klasseId, uid) {
@@ -58,7 +69,7 @@ export function setKursMembership(klasseId, kursId, uid, join) {
 
 // Mitglied aus der Klasse sperren (Ban): uid in bannedIds, aus adminIds + allen Kursen
 // entfernen, Nickname für die Entsperren-Liste festhalten. Der betroffene Client wirft
-// sich per KlasseContext-Listener selbst raus (klasseId: null → Onboarding).
+// sich per MembershipsContext-Listener selbst raus (klasseIds: arrayRemove → Onboarding/andere Klasse).
 export async function banFromKlasse(klasseId, user, kurse = []) {
   const { uid, nickname } = user;
   await Promise.all(
@@ -82,10 +93,11 @@ export function unbanFromKlasse(klasseId, uid) {
 }
 
 // Klasse selbst verlassen: aus allen eigenen Kursen austreten, ggf. aus adminIds
-// entfernen, eigene klasseId nullen (landet im Onboarding).
+// entfernen, Klasse aus der eigenen Mitgliedschaft (klasseIds) entfernen. War es die
+// aktive Klasse, fällt activeKlasseId auf eine verbleibende zurück (oder null -> Onboarding).
 // isAdmin-Guard: nur Admins dürfen das Klassen-Doc schreiben (Rule), sonst würde die
-// adminIds-Zeile mit permission-denied fehlschlagen und das klasseId-Nullen verhindern.
-export async function leaveKlasse(klasseId, uid, kurse = [], isAdmin = false) {
+// adminIds-Zeile mit permission-denied fehlschlagen und den User-Write verhindern.
+export async function leaveKlasse(klasseId, uid, kurse = [], isAdmin = false, klasseIds = [], activeKlasseId = null) {
   await Promise.all(
     kurse
       .filter((k) => k.memberIds?.includes(uid))
@@ -94,16 +106,84 @@ export async function leaveKlasse(klasseId, uid, kurse = [], isAdmin = false) {
   if (isAdmin) {
     await updateDoc(doc(db, "klassen", klasseId), { adminIds: arrayRemove(uid) });
   }
-  await updateDoc(doc(db, "users", uid), { klasseId: null });
+  const rest = klasseIds.filter((id) => id !== klasseId);
+  const nextActive = activeKlasseId === klasseId ? (rest[0] ?? null) : activeKlasseId;
+  await updateDoc(doc(db, "users", uid), {
+    klasseIds: arrayRemove(klasseId),
+    activeKlasseId: nextActive,
+  });
+}
+
+// ── Schuljahres-Migration ────────────────────────────────────────────────────
+// Ein Klassen-Admin schreibt eine Einladung ans QUELL-Klassen-Doc. Alle betroffenen
+// Mitglieder sind dort bereits Mitglied und beobachten es via MembershipsProvider;
+// sie treten der Zielklasse selbst bei (acceptMigration) und bleiben in der alten.
+
+// Migration starten: schreibt das migration-Feld an die Quellklasse (nur Admin, Rule).
+export function startMigration(sourceKlasseId, target, memberIds = []) {
+  return updateDoc(doc(db, "klassen", sourceKlasseId), {
+    migration: {
+      id: `${sourceKlasseId}_${Date.now()}`,
+      targetId: target.id,
+      targetName: target.name,
+      memberIds,
+      createdAt: Date.now(),
+    },
+  });
+}
+
+// Laufende Migration beenden/zurückziehen (Admin räumt die Einladung ab).
+export function endMigration(sourceKlasseId) {
+  return updateDoc(doc(db, "klassen", sourceKlasseId), { migration: deleteField() });
+}
+
+// Einladung annehmen: der Zielklasse beitreten (bleibt in der alten Klasse), aktiv schalten
+// und die Migration als behandelt markieren. Ban-Pre-Check wie bei joinByCode.
+export async function acceptMigration(uid, migration) {
+  const targetSnap = await getDoc(doc(db, "klassen", migration.targetId));
+  if (!targetSnap.exists()) {
+    // Ziel existiert nicht mehr -> Einladung stillschweigend als erledigt markieren
+    await dismissMigration(uid, migration.id);
+    throw new Error("Die Zielklasse existiert nicht mehr.");
+  }
+  if ((targetSnap.data().bannedIds || []).includes(uid)) {
+    throw new Error("Du wurdest aus der Zielklasse entfernt und kannst ihr nicht beitreten.");
+  }
+  await updateDoc(doc(db, "users", uid), {
+    klasseIds: arrayUnion(migration.targetId),
+    activeKlasseId: migration.targetId,
+    migrationsSeen: arrayUnion(migration.id),
+  });
+}
+
+// Einladung ablehnen/später: nur als behandelt markieren (Banner verschwindet).
+export function dismissMigration(uid, migrationId) {
+  return updateDoc(doc(db, "users", uid), { migrationsSeen: arrayUnion(migrationId) });
+}
+
+// Wirft mit Kontext, welche Kaskadenstufe fehlschlug (macht permission-denied lokalisierbar)
+function stepError(step, e) {
+  const code = e?.code || e?.message || String(e);
+  return new Error(`${step} (${code})`);
 }
 
 async function deleteSubcollection(pathSegments) {
-  const snap = await getDocs(collection(db, ...pathSegments));
+  const path = pathSegments.join("/");
+  let snap;
+  try {
+    snap = await getDocs(collection(db, ...pathSegments));
+  } catch (e) {
+    throw stepError(`Lesen von ${path}`, e);
+  }
   const docs = snap.docs;
   for (let i = 0; i < docs.length; i += 450) {
     const batch = writeBatch(db);
     docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e) {
+      throw stepError(`Löschen in ${path} (${docs.length} Docs)`, e);
+    }
   }
 }
 
@@ -119,17 +199,30 @@ export async function deleteKurs(klasseId, kursId) {
   for (const sub of ["materialien", "hausaufgaben", "pruefungen", "chat"]) {
     await deleteSubcollection(["klassen", klasseId, "kurse", kursId, sub]);
   }
-  await deleteDoc(doc(db, "klassen", klasseId, "kurse", kursId));
+  try {
+    await deleteDoc(doc(db, "klassen", klasseId, "kurse", kursId));
+  } catch (e) {
+    throw stepError(`Löschen Kurs-Doc ${kursId}`, e);
+  }
 }
 
 // Klasse löschen: alle Kurse (inkl. Dateien) kaskadierend, dann das Klassen-Doc.
 // Mitglieder werden über den Klassen-Listener automatisch ins Onboarding geworfen.
 export async function deleteKlasse(klasseId) {
-  const kurseSnap = await getDocs(collection(db, "klassen", klasseId, "kurse"));
+  let kurseSnap;
+  try {
+    kurseSnap = await getDocs(collection(db, "klassen", klasseId, "kurse"));
+  } catch (e) {
+    throw stepError("Lesen der Kursliste", e);
+  }
   for (const kurs of kurseSnap.docs) {
     await deleteKurs(klasseId, kurs.id);
   }
   // Sammlungen (Klassenebene) aufräumen – vor dem Klassen-Doc (Rules lesen es per get())
   await deleteSubcollection(["klassen", klasseId, "sammlungen"]);
-  await deleteDoc(doc(db, "klassen", klasseId));
+  try {
+    await deleteDoc(doc(db, "klassen", klasseId));
+  } catch (e) {
+    throw stepError("Löschen Klassen-Doc", e);
+  }
 }

@@ -8,3 +8,8 @@ dev-dist
 
 .vercel
 .env*
+
+# Firebase-Admin Service-Account-Keys (Backfill-Skript) – niemals committen
+serviceAccountKey.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json

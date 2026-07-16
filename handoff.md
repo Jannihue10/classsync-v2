@@ -1,5 +1,5 @@
 # ClassSync – Vollständiges Handoff-Dokument (v2 / „Fable"-Rebuild)
-*Zuletzt aktualisiert: 15. Juli 2026*
+*Zuletzt aktualisiert: 16. Juli 2026*
 
 > Dieses Projekt ist ein **kompletter Neubau** der ursprünglichen ClassSync-App
 > (alter Prototyp: `C:\Users\janni\classsync`). Gleicher Tech-Stack, neues
@@ -53,10 +53,20 @@
 - Jeder eingeloggte User kann eine Klasse erstellen → wird automatisch erster Admin
 - **5-stelliger Zugangscode**, ohne verwechselbare Zeichen (kein 0/O/1/I), Generator in `lib/klasseActions.js`
 - Beitritt per Code → **Kurswahlmodal öffnet automatisch** (sessionStorage-Flag `classsync_showKurswahl`)
+- **Multi-Klassen (Juli 2026):** Ein User kann Mitglied **mehrerer Klassen** sein. Mitgliedschaft liegt als **`users.klasseIds[]`**; die gerade sichtbare Klasse ist **`users.activeKlasseId`**. Die App bleibt immer auf **eine aktive Klasse** skopiert (der ganze Feature-Code arbeitet unverändert gegen `klasse.id`) – der `KlasseProvider` wird per `key={activeKlasseId}` neu gemountet, wenn man wechselt.
+- **Klassen-Wechsler:** Dropdown in der **Sidebar-Kopfzeile** (Klassenname → Liste aller eigenen Klassen + „Klasse hinzufügen") und **Profil → „Deine Klassen"**. Wechsel = `switchActiveKlasse` (setzt `activeKlasseId`). „Klasse hinzufügen" öffnet `AddKlasseModal` (dasselbe Beitreten/Erstellen-Formular wie das Onboarding, `KlasseForm`).
 - **Multi-Admin** über `klassen.adminIds` (Array) – Admins können promoten/degradieren, letzter Admin ist geschützt (UI zeigt „letzter Admin" statt Button)
 - **Mitglieder-Moderation (Klassenebene):** Klassen-Admins können Mitglieder **sperren** (Ban) – der Betroffene fliegt aus allen Kursen und der Klasse und kann mit dem Code **nicht** wieder beitreten, bis ein Admin ihn entsperrt. Umgesetzt über `klassen.bannedIds` (Client wirft sich per Listener selbst raus, s. §9). Gesperrte werden in der Mitgliederliste **ausgegraut** mit „Gesperrt"-Tag angezeigt, plus eigene **„Gesperrt"-Sektion** zum Entsperren. Admins können nicht direkt gebannt werden (erst degradieren).
-- **Klasse selbst verlassen:** Jedes Mitglied kann die Klasse eigenständig über das Profil verlassen (aus allen Kursen raus + `klasseId` genullt). Der **letzte Admin** ist geschützt (muss erst Rolle übertragen oder Klasse löschen).
-- Klasse löschen (nur Klassen-Admin): **Kaskade** löscht alle Kurse inkl. Subcollections und Storage-Dateien; Mitglieder werden über den Klassen-Listener automatisch ins Onboarding geworfen (`klasseId` wird am User-Doc genullt)
+- **Klasse selbst verlassen:** Jedes Mitglied verlässt die **aktive** Klasse über das Profil (aus allen Kursen raus + `klasseId` aus `klasseIds` entfernt; war es die aktive Klasse, fällt `activeKlasseId` auf eine verbleibende zurück oder wird null → Onboarding). Der **letzte Admin** ist geschützt (muss erst Rolle übertragen oder Klasse löschen). *Nur die aktive Klasse verlassbar – für eine andere erst dorthin wechseln (sonst fehlt die geladene Kursliste zum Aufräumen der `memberIds`).*
+- Klasse löschen (nur Klassen-Admin): **Kaskade** löscht alle Kurse inkl. Subcollections, **Sammlungen** und Storage-Dateien; Mitglieder werden über den `MembershipsContext`-Listener automatisch aus `klasseIds` entfernt (aktive Klasse weg → nächste/Onboarding). Kaskade meldet die genaue Stufe bei Fehlern (`stepError`, s. §9).
+
+### Schuljahres-Migration (Juli 2026)
+Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue übernehmen".
+- **Ablauf:** Profil → aktive Klasse → **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`). Ziel = **neue Klasse anlegen** *oder* **bestehende selbst-administrierte Klasse** wählen. Bestätigen schreibt ein `migration`-Feld an die **Quell**-Klasse (`startMigration`): `{ id, targetId, targetName, memberIds (Snapshot ohne Gesperrte), createdAt }`.
+- **Einladung + Bestätigen (kein Auto-Join):** Betroffene Mitglieder sehen einen **`MigrationBanner`** („… beitreten?") und treten **selbst** bei (`acceptMigration` → `arrayUnion` in `klasseIds` + neue Klasse aktiv). Sie **bleiben** Mitglied der alten Klasse. Muster wie Ban: der Client bedient sich selbst per Listener (`MembershipsContext.pendingMigrations`).
+- **„Später":** blendet den Banner **dauerhaft** aus (`migrationsSeen` am User-Doc), die Einladung bleibt aber unter **Profil → „Deine Klassen" → „Offene Einladungen"** jederzeit annehmbar (`openMigrations` = ungefiltert; `pendingMigrations` = Banner, seen-gefiltert).
+- **Ende:** Einladung verschwindet, sobald man beigetreten ist **oder** die Admin sie zurückzieht (`endMigration` → `migration`-Feld gelöscht; im Modal „Migration beenden").
+- **Sicherheit:** Ein Beitritt setzt die neue Klasse immer als `activeKlasseId` → die `users`-Update-Rule kann den Ban-Schutz einzeln prüfen (s. §8). Ban-Pre-Check zusätzlich clientseitig in `acceptMigration`.
 
 ### Kurse
 - **Jedes Klassenmitglied** kann Kurse erstellen → wird Kurs-Admin (`erstellerId`) und einziges Startmitglied
@@ -128,10 +138,10 @@
 
 ### Profil
 - Nickname ändern (live via Firestore-Listener), E-Mail-Anzeige (nur für einen selbst)
-- Klassenname + Zugangscode mit **Kopieren-Button**
-- **Mitgliederliste live** (Query `users where klasseId ==`), Admin-Badge 👑, Promote/Demote-Buttons für Klassen-Admins, Letzter-Admin-Schutz; **Entfernen/Sperren** je Mitglied + **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen)
-- **„Klasse verlassen"** (in der Klassen-Karte, letzter Admin gesperrt)
-- Light/Dark-Toggle, Abmelden, Kurse verwalten, ⚠️ Gefahrenzone (Klasse löschen)
+- **„Deine Klassen"-Karte:** alle eigenen Klassen (`MembershipsContext.myClasses`), aktive markiert, „Wechseln" je Klasse, „Klasse hinzufügen" (`AddKlasseModal`); darunter **„Offene Einladungen"** (Migration, `openMigrations`) mit „Beitreten".
+- **Aktive Klasse:** Klassenname + Zugangscode mit **Kopieren-Button**, „Kurse verwalten", „Klasse verlassen" (letzter Admin gesperrt) und für Admins **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`).
+- **Mitgliederliste live** (Query `users where klasseIds array-contains <aktive Klasse>`), Admin-Badge 👑, Promote/Demote-Buttons für Klassen-Admins, Letzter-Admin-Schutz; **Entfernen/Sperren** je Mitglied + **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen)
+- Light/Dark-Toggle, Abmelden, ⚠️ Gefahrenzone (Klasse löschen – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen)
 
 ### Landingpage (`classsync.de`)
 - `Landing.jsx`: Sticky Nav (Blur), Hero mit Gradient-Headline, Features-Grid (6), 3-Schritte-Sektion, CTA, Footer
@@ -177,33 +187,36 @@ ClassSync Fable/
 ├── storage.rules                   ← dito (Console → Storage → Rules)
 ├── .env.local                      ← Firebase-Keys + VERCEL_OIDC_TOKEN (NICHT in Git)
 ├── .claude/launch.json             ← Dev-Server-Config für Claude Code (npm run dev, Port 5173)
+├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration, Firebase-Admin-SDK)
 ├── public/                         ← favicon.svg, icon-16/32/180/192/512.png, icons.svg
 └── src/
     ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal
-    ├── App.jsx                     ← Auth-Gate: SetupHinweis → Spinner → Login/Register → VerifyEmail (unverifiziert) → Onboarding → KlasseProvider → AppShell
+    ├── App.jsx                     ← Auth-Gate: … → Onboarding (klasseIds leer) → MembershipsProvider → KlasseProvider(key=activeKlasseId) → AppShell
     ├── lib/
     │   ├── firebase.js             ← Init aus import.meta.env; exportiert db, auth, storage, firebaseConfigured
     │   ├── dates.js                ← formatDatum, parseDatum, calcTage, tageLabel, relativeTime, formatUhrzeit, getKW, mondayOf, timeToMin, todayISO, dateToISO, WOCHENTAGE
     │   ├── faecher.js              ← FACH_VORLAGEN (18), MAT_TYPEN, MAT_COLORS, MAT_ICONS, DATEITYP_ICONS, KURS_FARBEN
-    │   ├── klasseActions.js        ← generateCode, createKlasse, joinByCode (mit Ban-Pre-Check), promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse, deleteKurs, deleteKlasse (Kaskade inkl. Sammlungen)
+    │   ├── klasseActions.js        ← generateCode, createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
     │   ├── useKursCollection.js    ← Hook: Live-Listener auf eine Kurs-Subcollection; tsMillis()
     │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
     │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial
     │   └── useMediaQuery.js        ← useIsMobile (<768px), useIsWide (≥1200px)
     ├── context/
-    │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register/login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification (E-Mail-Verifizierung); authErrorText
+    │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; authErrorText
+    │   ├── MembershipsContext.jsx  ← **NEU**: beobachtet ALLE eigenen Klassen (klasseIds). Liefert myClasses (Wechsler/Profil), openMigrations/pendingMigrations (Einladungen), und wirft bei Ban/Löschung klassenübergreifend selbst raus (arrayRemove aus klasseIds + activeKlasseId neu wählen)
     │   ├── ThemeContext.jsx        ← mode, toggle, t (Token-Objekt)
-    │   ├── KlasseContext.jsx       ← Klassen-Doc-Listener (gelöscht ODER in bannedIds → klasseId nullen), Kurse-Listener; meineKurse, isKlassenAdmin, canManageKurs
-    │   └── NotificationContext.jsx ← Material-Listener pro eigenem Kurs, lastSeen, Dedupe per ID, grouped, markAllRead
+    │   ├── KlasseContext.jsx       ← Listener auf die **aktive** Klasse (klasse=null bei gelöscht/gesperrt; Eviction macht jetzt MembershipsContext), Kurse-Listener; meineKurse, isKlassenAdmin, canManageKurs
+    │   └── NotificationContext.jsx ← Material-Listener pro eigenem Kurs der aktiven Klasse, lastSeen, Dedupe per ID, grouped, markAllRead
     ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints
     ├── components/
     │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, CloseButton, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card, LogoMark
     │   ├── ui/CourseAvatar.jsx     ← farbiges Kurs-Monogramm (ersetzt Emoji-Icons)
     │   ├── ui/DateiIcon.jsx        ← PDF/Bild/Notiz-Icon (Lucide)
     │   ├── layout/
-    │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes (inkl. /bibliothek), Mobile-Drawer, öffnet Kurswahl-/KursForm-/Notification-Overlays
-    │   │   ├── Sidebar.jsx         ← Logo/Klassenname, Nav (Übersicht, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke/Theme unten
+    │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes (inkl. /bibliothek), Mobile-Drawer, MigrationBanner, öffnet Kurswahl-/KursForm-/AddKlasse-/Notification-Overlays
+    │   │   ├── Sidebar.jsx         ← Logo + **Klassen-Switcher-Dropdown** (myClasses, aktive ✓, „Klasse hinzufügen"), Nav (Übersicht, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke/Theme unten
+    │   │   ├── MigrationBanner.jsx ← **NEU**: offene Schuljahres-Einladungen (pendingMigrations) mit „Beitreten"/„Später"
     │   │   ├── AuthLayout.jsx      ← zentrierte Karte für Login/Register/Onboarding/Setup; exportiert Logo
     │   │   ├── PageHeader.jsx      ← Seitenkopf (Icon, Titel, Untertitel, Aktion)
     │   │   └── NotificationPanel.jsx ← Slide-over rechts, gruppierte neue Materialien, „Alle gelesen"
@@ -226,21 +239,26 @@ ClassSync Fable/
     │   │   └── ShareSammlungModal.jsx  ← Klassenmitglieder für Freigabe an-/abwählen
     │   └── modals/
     │       ├── KurswahlModal.jsx   ← Toggle-Karten, Suche, Alle (ab)wählen, memberIds-Diff
-    │       ├── KursMitgliederModal.jsx ← Kurs-Mitgliederliste (uid→Nickname via users-Query), Entfernen für Kurs-/Klassen-Admins
+    │       ├── KursMitgliederModal.jsx ← Kurs-Mitgliederliste (uid→Nickname via users-Query `klasseIds array-contains`), Entfernen für Kurs-/Klassen-Admins
     │       ├── KursFormModal.jsx   ← Create+Edit, Vorlagen, Zeiten-Editor, Farbwahl + Monogramm-Vorschau
-    │       └── ConfirmDialog.jsx   ← generischer Bestätigungsdialog (busy-State)
+    │       ├── KlasseForm.jsx      ← **NEU**: geteiltes Beitreten/Erstellen-Formular (Tabs, Code/Name); exportiert KURSWAHL_FLAG. Von Onboarding UND AddKlasseModal genutzt
+    │       ├── AddKlasseModal.jsx  ← **NEU**: weitere Klasse hinzufügen (kapselt KlasseForm im Modal)
+    │       ├── MigrateKlasseModal.jsx ← **NEU**: Schuljahres-Migration starten (Ziel neu/bestehend) bzw. laufende beenden
+    │       └── ConfirmDialog.jsx   ← generischer Bestätigungsdialog (busy-State; schluckt onConfirm-Fehler → Aufrufer muss selbst anzeigen)
     └── pages/
         ├── Landing.jsx             ← Marketing-Page (classsync.de)
         ├── Login.jsx               ← Login + Passwort-Reset-Flow
         ├── Register.jsx
         ├── VerifyEmail.jsx         ← E-Mail-Bestätigungs-Screen (harte Sperre): Auto-Versand, „Ich habe bestätigt" (reload), Resend mit Cooldown, Abmelden
-        ├── Onboarding.jsx          ← Klasse erstellen/beitreten; exportiert KURSWAHL_FLAG
+        ├── Onboarding.jsx          ← Klasse erstellen/beitreten (klassenlos); nutzt KlasseForm, re-exportiert KURSWAHL_FLAG
         ├── UebersichtPage.jsx      ← Startseite „/" (HAs + Prüfungen + neueste Materialien)
         ├── BibliothekPage.jsx      ← /bibliothek – kursübergreifende Materialsicht (Filter) + Sammlungen-Tab
         ├── KursPage.jsx            ← /kurs/:kursId – Header (inkl. Mitglieder-Button), Tabs, MaterialGrid, HA/Prüfungen/Chat
         ├── KalenderPage.jsx        ← /kalender (Woche/Monat; Stundenplan integriert)
-        └── ProfilPage.jsx          ← /profil – Nickname, Klasse/Code, Mitglieder-Moderation (Sperren/Entsperren/Klasse verlassen), Gefahrenzone
+        └── ProfilPage.jsx          ← /profil – Nickname, **Deine Klassen** (Wechsel/Hinzufügen/Einladungen), aktive Klasse/Code, Mitglieder-Moderation, **Migration starten**, Gefahrenzone (mit Fehleranzeige)
 ```
+
+**Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen).
 
 **Routen:** `/` Übersicht · `/bibliothek` · `/kurs/:kursId` · `/kalender` · `/profil` · `/stundenplan` → Redirect auf `/kalender` · `*` → `/`
 **Sidebar-Nav:** Übersicht · Bibliothek · Kalender (+ Kursliste, Profil/Glocke/Theme unten)
@@ -253,18 +271,24 @@ ClassSync Fable/
 
 ```
 /users/{uid}
-  nickname:   string
-  email:      string
-  klasseId:   string | null      ← wird beim Klassen-Löschen automatisch genullt
-  createdAt:  number
-  # KEIN kurseIds, KEIN rolle-Feld
+  nickname:       string
+  email:          string
+  klasseIds:      string[]        ← NEU (Multi-Klassen): alle Mitgliedschaften
+  activeKlasseId: string | null   ← NEU: gerade sichtbare Klasse (in klasseIds oder null)
+  migrationsSeen: string[]        ← NEU: mit „Später" ausgeblendete Migrations-IDs, optional
+  createdAt:      number
+  # klasseId (alt, Einzelwert) wird durch Lazy-Migration/Backfill nach klasseIds überführt
+  #  und danach ignoriert; KEIN kurseIds, KEIN rolle-Feld
 
 /klassen/{klasseId}
   name:       string
   code:       string             ← 5-stellig, ohne 0/O/1/I
   adminIds:   string[]           ← Multi-Admin
-  bannedIds:  string[]           ← NEU: gesperrte uids (Rejoin-Sperre + Selbst-Eviction), optional
-  bannedInfo: { uid: nickname }  ← NEU: denormalisierte Nicknames der Gesperrten (Anzeige), optional
+  bannedIds:  string[]           ← gesperrte uids (Rejoin-Sperre + Selbst-Eviction), optional
+  bannedInfo: { uid: nickname }  ← denormalisierte Nicknames der Gesperrten (Anzeige), optional
+  migration:  {                  ← NEU: laufende Schuljahres-Einladung, optional (nur während Migration)
+                id, targetId, targetName, memberIds:string[], createdAt
+              }
   createdAt:  number
 
 /klassen/{klasseId}/kurse/{kursId}
@@ -328,6 +352,10 @@ ClassSync Fable/
 
 | Aktion | Mitglied | Kurs-Admin (Ersteller) | Klassen-Admin |
 |---|---|---|---|
+| Mehreren Klassen angehören / wechseln | ✅ | ✅ | ✅ |
+| Weitere Klasse beitreten/erstellen | ✅ | ✅ | ✅ |
+| Schuljahres-Migration starten | ❌ | ❌ | ✅ (der Quellklasse) |
+| Migrations-Einladung annehmen/ablehnen | ✅ | ✅ | ✅ |
 | Kurse beitreten/verlassen | ✅ | ✅ | ✅ |
 | Kurs erstellen | ✅ | ✅ | ✅ |
 | Kurs bearbeiten | ❌ | ✅ (nur eigener) | ✅ (alle) |
@@ -357,7 +385,7 @@ ClassSync Fable/
 | Klasse selbst verlassen | ✅ | ✅ | ✅ (außer letzter Admin) |
 | Klasse löschen | ❌ | ❌ | ✅ |
 
-\* Die **Rules** erlauben dem Kurs-Admin zusätzlich das Löschen fremder HAs/Prüfungen/Chat-Docs – das braucht die **Lösch-Kaskade** beim Kurs-Löschen. Die **UI** bietet diese Buttons aber nur Autor/Klassen-Admin an. Bei **Sammlungen** ist die Sammlung-Verwaltung (umbenennen/löschen/teilen) dem Ersteller vorbehalten; der Klassen-Admin darf Sammlungen nur für die **Lösch-Kaskade** beim Klassen-Löschen entfernen (keine UI dafür).
+\* Die **Rules** erlauben dem Kurs-Admin zusätzlich das Löschen fremder HAs/Prüfungen/Chat-Docs – das braucht die **Lösch-Kaskade** beim Kurs-Löschen. Die **UI** bietet diese Buttons aber nur Autor/Klassen-Admin an. Bei **Sammlungen** ist die Sammlung-Verwaltung (umbenennen/löschen/teilen) dem Ersteller vorbehalten; der Klassen-Admin darf Sammlungen nur für die **Lösch-Kaskade** beim Klassen-Löschen **lesen+löschen** (keine UI dafür – die Bibliothek zeigt nur eigene Sammlungen). Die Read-Erlaubnis für Admins ist nötig, damit die Kaskade alle Sammlungen auflisten kann (sonst `permission-denied` bei Fremd-Sammlungen).
 
 ---
 
@@ -365,18 +393,20 @@ ClassSync Fable/
 
 Vollständig in [`firestore.rules`](firestore.rules) und [`storage.rules`](storage.rules) – **Deployment manuell** über die Firebase Console (Copy-Paste → Veröffentlichen). Kernpunkte:
 
-- Helper: `isAuth()`, `uid()`, `me()` (get auf eigenes User-Doc), `isMember(klasseId)`, `isKlassenAdmin(klasseId)`, **`isKursAdmin(klasseId, kursId)`** (get auf Kurs-Doc, vergleicht `erstellerId`)
-- `users`: read selbst oder gleiche Klasse; create/update nur selbst; **update zusätzlich mit Rejoin-Sperre** – man darf `klasseId` nur auf eine Klasse setzen, in deren `bannedIds` man nicht steht (Nullen/Unverändert bleiben erlaubt); delete false
-- `klassen`: read alle Auth-User (nötig für Code-Query beim Beitritt); create mit `uid in adminIds`; update/delete nur Admins (Ban = Admin schreibt `bannedIds`/`bannedInfo`, keine Extra-Rule nötig)
+- Helper: `isAuth()`, `uid()`, `me()` (get auf eigenes User-Doc), **`isMember(klasseId)` = `klasseId in me().get('klasseIds', [])`** (Multi-Klassen), `isKlassenAdmin(klasseId)`, **`isKursAdmin(klasseId, kursId)`** (get auf Kurs-Doc, vergleicht `erstellerId`)
+- `users`: **read** selbst **oder** wer mind. eine Klasse teilt (`resource.klasseIds.hasAny(me().klasseIds)`); create nur selbst; **update** nur selbst mit Multi-Klassen-Logik: `activeKlasseId` muss null oder in `klasseIds` sein, und beim **Hinzufügen** einer Klasse (klasseIds wächst per Set-`difference`) darf **nur genau** die neue `activeKlasseId` dazukommen und man darf dort nicht gesperrt sein (Ban-Schutz; Entfernen/Umsortieren frei). delete false
+- `klassen`: read alle Auth-User (nötig für Code-Query beim Beitritt); create mit `uid in adminIds`; update/delete nur Admins (Ban = Admin schreibt `bannedIds`/`bannedInfo`; **Migration** = Admin schreibt `migration`-Feld – beides ohne Extra-Rule, weil Admins alle Felder dürfen)
 - `kurse`: create nur mit `erstellerId == uid` **und** `memberIds == [uid]`; update Klassen-Admin/Ersteller **oder** `affectedKeys().hasOnly(['memberIds'])` (= Selbst-Beitritt/-Austritt für jedes Mitglied); delete Klassen-Admin/Ersteller
 - `materialien`: update Admin/Autor oder `hasOnly(['likes'])`; **delete Klassen-Admin/Kurs-Admin/Autor**
 - `hausaufgaben`: update Admin/Autor oder `hasOnly(['doneBy','hiddenBy'])`; delete Klassen-Admin/Kurs-Admin/Autor
 - `pruefungen`: create mit `autorId == uid`; update/delete Klassen-Admin/Kurs-Admin/Autor
 - `chat`: create mit `autorId == uid`; **update** zwei Pfade — (a) Autor bearbeitet eigenen Text: `hasOnly(['text','editedAt'])` und nur solange `deleted != true`; (b) Tombstone-Löschen durch Autor/Kurs-Admin/Klassen-Admin: `deleted == true` und `hasOnly(['deleted','text'])`; **delete** (Hard) weiterhin Klassen-Admin/Kurs-Admin (**nur** für die Lösch-Kaskade)
-- `sammlungen`: read nur Sammlungs-Mitglieder (`uid in memberIds`); create mit `ownerId == uid` und `memberIds == [uid]`; update entweder Owner (alles) oder Sammlungs-Mitglied, aber nur `hasOnly(['items','memberIds'])` (Kollaboration + Selbst-Verlassen); delete Owner **oder** Klassen-Admin (Letzterer nur für die Lösch-Kaskade)
-- **storage.rules**: Klassen-Check per cross-service `firestore.get()` auf das User-Doc; create zusätzlich ≤ 10 MB und contentType PDF/`image/*`; update false
+- `sammlungen`: **read** Sammlungs-Mitglieder (`uid in memberIds`) **oder Klassen-Admin** (Letzterer nötig, damit die Lösch-Kaskade alle Sammlungen auflisten kann – s. ⚠️ unten); create mit `ownerId == uid` und `memberIds == [uid]`; update entweder Owner (alles) oder Sammlungs-Mitglied, aber nur `hasOnly(['items','memberIds'])` (Kollaboration + Selbst-Verlassen); delete Owner **oder** Klassen-Admin (Letzterer nur für die Lösch-Kaskade)
+- **storage.rules**: Klassen-Check per cross-service `firestore.get()` auf das User-Doc, **`klasseId in ...klasseIds`** (Multi-Klassen); create zusätzlich ≤ 10 MB und contentType PDF/`image/*`; update false
 
 ⚠️ **Bekannter, behobener Bug (nicht wieder einführen!):** In v1 der Rules war `chat: delete false` absolut – dadurch scheiterte die Lösch-Kaskade von Klasse/Kurs mit permission-denied, nachdem Materialien/HAs/Prüfungen schon gelöscht waren. Fix: `isKursAdmin`-Helper + delete-Erlaubnis für Admins in allen Subcollections.
+
+⚠️ **Zweiter behobener Kaskaden-Bug (Juli 2026):** Die `sammlungen`-**read**-Rule war auf Sammlungs-Mitglieder beschränkt; die Lösch-Kaskade (`deleteKlasse`) liest aber per `getDocs` **alle** Sammlungen der Klasse → `permission-denied`, sobald eine Sammlung einem anderen Mitglied gehörte. Fix: `|| isKlassenAdmin(klasseId)` in der Sammlungen-read-Rule. Man kann nur löschen, was man auflisten (lesen) darf – bei jeder cascade-gelöschten Subcollection also read **und** delete für Admins sicherstellen.
 
 ⚠️ **IAM-Voraussetzung:** Das Storage-Dienstkonto (`service-…@gcp-sa-firebasestorage.iam.gserviceaccount.com`) braucht die Rolle **Cloud Datastore User**, sonst schlägt jedes `firestore.get()` in den Storage-Rules fehl. Ist für `classsync-v2` gesetzt.
 
@@ -393,7 +423,22 @@ const isApp = (host.startsWith("app.") || isLocal) && params.get("landing") !== 
 Lokal läuft also immer die App; die Landingpage sieht man unter `localhost:5173/?landing=1`.
 
 ### Auth-Gate-Kette (`App.jsx`)
-`!firebaseConfigured` → SetupHinweis · `loading` → Spinner · `!user` → Login/Register (`?register=true` beachtet) · **`!emailVerified` → VerifyEmail (harte Sperre, vor dem Profil-Check → greift für neue wie bestehende Nutzer)** · `!profile` → Spinner · `!profile.klasseId` → Onboarding · sonst `KlasseProvider` → `KlasseGate` (Klasse gelöscht → Onboarding) → `NotificationProvider` → `AppShell`.
+`!firebaseConfigured` → SetupHinweis · `loading` → Spinner · `!user` → Login/Register (`?register=true` beachtet) · **`!emailVerified` → VerifyEmail (harte Sperre, vor dem Profil-Check → greift für neue wie bestehende Nutzer)** · `!profile` → Spinner · **`klasseIds` leer → Onboarding** · sonst `MembershipsProvider` → `KlasseProvider key={activeKlasseId}` → `KlasseGate` → `NotificationProvider` → `AppShell`. `activeKlasseId` = `profile.activeKlasseId`, falls in `klasseIds`, sonst `klasseIds[0]` (Fallback). `KlasseGate` zeigt bei `klasse == null` nur einen Spinner (transient bei gelöschter/gesperrter aktiver Klasse – der `MembershipsProvider` entfernt sie dann aus `klasseIds`, danach greift eine andere aktive Klasse oder das Onboarding).
+
+### Multi-Klassen & aktive Klasse (`MembershipsContext`, `App.jsx`)
+- Mitgliedschaft = `users.klasseIds[]`, sichtbare Klasse = `users.activeKlasseId`. Der `key={activeKlasseId}` am `KlasseProvider` erzwingt beim Wechsel einen **sauberen Remount** des klassen-skopierten Baums (inkl. `AppShell`, `NotificationProvider`) → der gesamte Feature-Code bleibt unverändert single-class.
+- **`MembershipsProvider`** (über dem KlasseProvider): pro-Doc-`onSnapshot` auf alle `klasseIds` → `myClasses` (Wechsler/Profil). Erkennt gelöschte/gesperrte Klassen und wirft sich selbst raus: `updateProfile({ klasseIds: arrayRemove(id), activeKlasseId: war-aktiv ? rest[0]??null : unverändert })`. Erkennt Migrations-Einladungen → `openMigrations`/`pendingMigrations`.
+- **Wechseln:** `switchActiveKlasse(uid, id)` = `updateDoc(users/uid, { activeKlasseId })`. **Hinzufügen:** `AddKlasseModal` → `KlasseForm` (createKlasse/joinByCode setzen `arrayUnion(klasseIds)` + `activeKlasseId`). Nach Beitritt greift wie gehabt das Kurswahl-Flag (AppShell remountet ja durch den Wechsel).
+
+### Schuljahres-Migration (`klasseActions`, `MigrateKlasseModal`, `MigrationBanner`)
+- **Start (Admin):** `startMigration(sourceId, target, memberIds)` schreibt `migration:{id,targetId,targetName,memberIds,createdAt}` an die **Quell**-Klasse. `target` = neu via `createKlasse` **oder** bestehende selbst-administrierte Klasse (`myClasses` gefiltert auf `adminIds.includes(uid)`). `memberIds` = aktuelle Mitglieder ohne Gesperrte.
+- **Annahme (Mitglied):** `MembershipsContext` liefert `pendingMigrations` (Banner) und `openMigrations` (Profil). `acceptMigration(uid, migration)` = Ban-Pre-Check + `arrayUnion(klasseIds, targetId)` + `activeKlasseId=targetId` + `arrayUnion(migrationsSeen, id)`. Bleibt in der alten Klasse.
+- **„Später":** `dismissMigration` (nur `migrationsSeen`) → Banner weg, aber `openMigrations` (ungefiltert) hält die Einladung im Profil annehmbar. **Ende:** `endMigration(sourceId)` = `migration: deleteField()`.
+- **Warum Einladung statt stiller Auto-Join?** Sauberer (keine stille Anmeldung) **und** sicherer: ein Beitritt setzt die neue Klasse als `activeKlasseId`, sodass die `users`-Update-Rule den Ban genau auf diese eine Klasse prüfen kann (per Set-`difference` der hinzugekommenen IDs).
+
+### Feld-Migration `klasseId` → `klasseIds` (`AuthContext`, `scripts/backfill-klasseids.mjs`)
+- **Lazy (Client):** Lädt das Profil ein Alt-Dokument mit `klasseId` aber ohne `klasseIds`, schreibt `AuthContext` sofort `{ klasseIds:[klasseId], activeKlasseId:klasseId }` ins **eigene** Doc (Rule erlaubt das) und spiegelt es lokal. Sicherheitsnetz für Einzelfälle.
+- **Backfill (einmalig, Admin-SDK):** `node scripts/backfill-klasseids.mjs ./serviceAccountKey.json [--dry-run]`. Nötig, weil ein Client **fremde** User-Docs nicht schreiben darf – ohne Backfill erscheinen noch nicht eingeloggte Alt-Mitglieder nicht in den `klasseIds array-contains`-Queries (Mitgliederlisten). Idempotent (überspringt bereits migrierte), lässt `klasseId` stehen. Key nicht committen (`.gitignore`).
 
 ### E-Mail-Verifizierung (`AuthContext`, `VerifyEmail`)
 - `emailVerified`-State wird in `onAuthStateChanged` aus `u?.emailVerified` gesetzt (lokales ID-Token, **kein** Request). `reload()` triggert `onAuthStateChanged` **nicht** und mutiert das User-Objekt in-place → `reloadVerification()` ruft `auth.currentUser.reload()` und spiegelt `emailVerified` in den State (erzwingt Re-Render + Gate-Weiterschaltung).
@@ -434,17 +479,17 @@ updateDoc(kursRef, { memberIds: join ? arrayUnion(uid) : arrayRemove(uid) });
 `MaterialCard`/`MaterialPreviewModal` sind über optionale Props (`showKurs`, `onAddToSammlung`) rückwärtskompatibel erweitert – die KursPage nutzt sie ohne diese Props und bleibt unverändert.
 
 ### Lösch-Kaskade (`lib/klasseActions.js`)
-`deleteKurs`: Storage-`listAll` + `deleteObject` (try/catch) → Subcollections `materialien/hausaufgaben/pruefungen/chat` in 450er-`writeBatch`es → Kurs-Doc. `deleteKlasse`: alle Kurse via `deleteKurs` → **Sammlungen-Subcollection** → Klassen-Doc. Reihenfolge wichtig: Kurs-/Klassen-Doc **zuletzt**, weil die Rules (`isKursAdmin`/`isKlassenAdmin`) sie per `get()` noch lesen müssen.
+`deleteKurs`: Storage-`listAll` + `deleteObject` (try/catch) → Subcollections `materialien/hausaufgaben/pruefungen/chat` in 450er-`writeBatch`es → Kurs-Doc. `deleteKlasse`: alle Kurse via `deleteKurs` → **Sammlungen-Subcollection** → Klassen-Doc. Reihenfolge wichtig: Kurs-/Klassen-Doc **zuletzt**, weil die Rules (`isKursAdmin`/`isKlassenAdmin`) sie per `get()` noch lesen müssen. **Jede Stufe wirft mit Kontext** (`stepError`, z. B. „Lesen von klassen/…/sammlungen (permission-denied)") – so ist ein Rule-Problem sofort lokalisierbar. Merksatz: **man kann nur löschen, was man auch lesen (auflisten) darf** → für jede cascade-gelöschte Subcollection Admin-**read** UND -**delete** in den Rules sicherstellen (s. §8, Sammlungen-Bug). `ConfirmDialog` schluckt Fehler → `ProfilPage` zeigt die Meldung selbst in der Gefahrenzone an.
 
-### Rauswurf bei gelöschter Klasse
-`KlasseContext` beobachtet das Klassen-Doc; existiert es nicht mehr **oder** steht die eigene uid in `bannedIds` → `updateDoc(users/{uid}, { klasseId: null })` → Auth-Gate zeigt Onboarding. Funktioniert live für alle eingeloggten Mitglieder.
+### Rauswurf bei gelöschter/gesperrter Klasse (Multi-Klassen)
+`MembershipsContext` beobachtet **alle** eigenen Klassen-Docs; existiert eines nicht mehr **oder** steht die eigene uid in dessen `bannedIds` → `updateProfile({ klasseIds: arrayRemove(id), activeKlasseId: … })`. Betrifft es die aktive Klasse, greift danach eine verbleibende oder das Onboarding. Funktioniert live für alle eingeloggten Mitglieder. (Der `KlasseContext` setzt für die **aktive** Klasse nur noch `klasse=null`; die Eviction liegt zentral im MembershipsContext.)
 
 ### Mitglieder-Moderation (`lib/klasseActions.js`, `ProfilPage`, `KursMitgliederModal`)
-- **Warum `bannedIds` am Klassen-Doc statt Schreiben ins fremde User-Doc?** Die `users`-Rules erlauben nur das Bearbeiten des *eigenen* Docs – ein Admin kann `klasseId` fremder User gar nicht nullen. Also editiert der Admin nur das Klassen-Doc (`banFromKlasse`: uid in `bannedIds`, raus aus `adminIds` + allen `memberIds`, Nickname in `bannedInfo`), und der Betroffene wirft sich per `KlasseContext`-Listener selbst ins Onboarding – dasselbe Muster wie beim Klassen-Löschen.
-- **Rejoin-Sperre doppelt:** serverseitig über die `users`-Update-Rule (`get()` auf die Ziel-Klasse) **und** clientseitig als Pre-Check in `joinByCode` **vor** dem `updateDoc`. Der Client-Check ist nötig für die UX: ein direkter Write würde von Firestore erst **optimistisch lokal** angewendet → Auth-Gate rendert kurz die App → `Onboarding` unmountet → Server-Rollback → frisches `Onboarding` **ohne** Fehlermeldung. Der Pre-Check wirft vorher eine klare Meldung, ohne Remount.
-- **`leaveKlasse(klasseId, uid, kurse, isAdmin)`:** raus aus allen eigenen Kursen, dann (nur wenn `isAdmin`) aus `adminIds`, zuletzt eigene `klasseId` nullen. Der `isAdmin`-Guard ist Pflicht – ein Nicht-Admin darf das Klassen-Doc nicht schreiben, sonst würde der `adminIds`-Write mit permission-denied das Nullen verhindern.
+- **Warum `bannedIds` am Klassen-Doc statt Schreiben ins fremde User-Doc?** Die `users`-Rules erlauben nur das Bearbeiten des *eigenen* Docs – ein Admin kann die `klasseIds` fremder User gar nicht ändern. Also editiert der Admin nur das Klassen-Doc (`banFromKlasse`: uid in `bannedIds`, raus aus `adminIds` + allen `memberIds`, Nickname in `bannedInfo`), und der Betroffene wirft sich per `MembershipsContext`-Listener selbst raus – dasselbe Muster wie beim Klassen-Löschen (und, invertiert, bei der Migration).
+- **Rejoin-Sperre doppelt:** serverseitig über die `users`-Update-Rule (Ban-Check auf die neu hinzukommende `activeKlasseId` per Set-`difference`) **und** clientseitig als Pre-Check in `joinByCode`/`acceptMigration` **vor** dem `updateDoc`. Der Client-Check ist nötig für die UX: ein direkter Write würde erst **optimistisch lokal** angewendet → kurzer Render → Server-Rollback **ohne** Fehlermeldung. Der Pre-Check wirft vorher eine klare Meldung.
+- **`leaveKlasse(klasseId, uid, kurse, isAdmin, klasseIds, activeKlasseId)`:** raus aus allen eigenen Kursen, dann (nur wenn `isAdmin`) aus `adminIds`, zuletzt `klasseIds: arrayRemove(klasseId)` + `activeKlasseId` auf eine verbleibende/null. Der `isAdmin`-Guard ist Pflicht – ein Nicht-Admin darf das Klassen-Doc nicht schreiben, sonst würde der `adminIds`-Write mit permission-denied den User-Write verhindern. *Nur die aktive Klasse verlassbar (kurse-Liste geladen).*
 - **Kurs-Entfernen** braucht keine eigene Funktion/Rule: `setKursMembership(…, false)` mit fremder uid; die `kurse`-Update-Rule erlaubt Admin/Ersteller bereits jede `memberIds`-Änderung.
-- Gesperrte, die ihre `klasseId` noch nicht selbst genullt haben, matchen weiter die Mitglieder-Query → in `ProfilPage` **ausgegraut mit „Gesperrt"-Tag** (nicht ausgeblendet, keine Aktions-Buttons). Kurs-Modal ist nicht betroffen (uid schon aus `memberIds` entfernt).
+- Gesperrte, die sich noch nicht selbst evictet haben, matchen weiter die Mitglieder-Query (`klasseIds array-contains`) → in `ProfilPage` **ausgegraut mit „Gesperrt"-Tag**. Kurs-Modal ist nicht betroffen (uid schon aus `memberIds` entfernt).
 
 ### Benachrichtigungen (`NotificationContext`)
 Pro eigenem Kurs ein `onSnapshot` auf `materialien`; nur `docChanges().type=="added"`, Dedupe über `seenIds`-Ref, Filter `ts > lastSeen` und `autorId !== uid`. `markAllRead()` setzt `classsync_lastSeen_{uid}` = jetzt und leert die Liste. `createdAt` von `serverTimestamp` kann beim lokalen Echo noch null sein → Fallback `Date.now()`.
@@ -469,7 +514,8 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 
 ## 10. Bekannte Limitierungen & TODOs
 
-- **Kein Multi-Klassen-Support** – User gehört genau einer Klasse an
+- **Multi-Klassen: nur EINE aktive Klasse** gleichzeitig sichtbar (bewusst – hält den Feature-Code single-class). Kein gleichzeitiger Blick über alle Klassen. **Klasse verlassen** geht nur für die aktive Klasse (sonst fehlt die geladene Kursliste zum Aufräumen). Beim Wechsel remountet der Baum kurz (Spinner).
+- **Feld-Migration:** neu registrierte/ eingeloggte User sind sofort auf `klasseIds`; noch nie eingeloggte Alt-User erscheinen erst nach dem **einmaligen Backfill** (`scripts/backfill-klasseids.mjs`) in fremden Mitgliederlisten (die Lazy-Migration greift erst bei deren nächstem Login).
 - **Keine Push-Notifications** – nur In-App (FCM wäre der nächste Schritt, braucht Blaze-Plan)
 - **Keine Offline-Unterstützung**
 - **Max. Dateigröße 10 MB** (`MAX_MB` in `UploadModal.jsx` + Storage-Rules – beide Stellen ändern!)

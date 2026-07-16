@@ -17,10 +17,12 @@ Lernzettel, Aufgabenblätter), organisiert nach Kursen und Stundenplan.
 
 ## Architektur-Kernpunkte
 - **Hostname-Routing** (`src/main.jsx`): `app.*` oder localhost → App, sonst Landing. Landing lokal via `?landing=1`.
+- **Multi-Klassen:** Klassen-Mitgliedschaft = **`users.klasseIds[]`** + **`users.activeKlasseId`** (aktive Klasse). Die App ist immer auf **eine aktive Klasse** skopiert (`KlasseProvider key={activeKlasseId}`); Wechsel über Sidebar-Dropdown/Profil. `MembershipsContext` beobachtet alle eigenen Klassen (Wechsler, Ban-Eviction, Migrations-Einladungen).
 - **Kurs-Mitgliedschaft = `memberIds`-Array am Kurs-Doc** (nicht am User). Admin-Status via `klassen.adminIds`.
-- Firestore-Struktur: `/klassen/{id}/kurse/{id}/{materialien|hausaufgaben|pruefungen|chat}`.
-- **Security Rules werden NICHT automatisch deployed** — `firestore.rules`/`storage.rules` von Hand in der Firebase Console veröffentlichen.
-- ⚠️ **Lösch-Kaskade-Falle:** Beim Kurs-/Klasse-Löschen müssen Admins auch Chat-/Fremd-Docs löschen dürfen (`isKursAdmin`-Helper in den Rules). Kurs-/Klassen-Doc immer *zuletzt* löschen (Rules lesen es per `get()`).
+- **Schuljahres-Migration:** Admin lädt per `migration`-Feld an der Quellklasse alle Mitglieder in eine neue/andere Klasse ein; sie treten **selbst** bei (bleiben in der alten). Muster wie Ban: Selbstbedienung per Listener.
+- Firestore-Struktur: `/klassen/{id}/kurse/{id}/{materialien|hausaufgaben|pruefungen|chat}` + `/klassen/{id}/sammlungen/{id}`.
+- **Security Rules werden NICHT automatisch deployed** — `firestore.rules`/`storage.rules` von Hand in der Firebase Console veröffentlichen. `isMember` prüft `klasseId in me().klasseIds`.
+- ⚠️ **Lösch-Kaskade-Falle:** Beim Kurs-/Klasse-Löschen müssen Admins auch Chat-/Fremd-Docs **und alle Sammlungen** lesen+löschen dürfen (`isKursAdmin`/`isKlassenAdmin` in den Rules; Sammlungen-**read** erlaubt Klassen-Admin explizit für die Kaskade). Kurs-/Klassen-Doc immer *zuletzt* löschen (Rules lesen es per `get()`). Kaskade wirft mit Stufen-Kontext (`stepError` in `klasseActions.js`).
 
 ## Designsprache (verbindlich — bei neuen Features beibehalten)
 - **Slate-UI mit sparsamem Akzent** (Light `#3b6ea5`, Dark `#6d9bcf`). Keine Farbverläufe.

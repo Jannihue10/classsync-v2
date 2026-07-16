@@ -18,7 +18,7 @@ export default function KursMitgliederModal({ kurs, onClose }) {
 
   // Klassenmitglieder live laden, um uids -> Nicknames aufzulösen
   useEffect(() => {
-    const q = query(collection(db, "users"), where("klasseId", "==", klasse.id));
+    const q = query(collection(db, "users"), where("klasseIds", "array-contains", klasse.id));
     return onSnapshot(q, (snap) => {
       const map = {};
       snap.docs.forEach((d) => (map[d.id] = d.data().nickname || "Unbekannt"));
