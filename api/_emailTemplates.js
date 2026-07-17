@@ -88,7 +88,20 @@ export function resetEmailHtml({ link }) {
   });
 }
 
+// Mail an die NEUE Adresse: erst nach Klick wechselt Firebase die E-Mail des Kontos.
+export function changeEmailHtml({ link, nickname }) {
+  const hi = nickname ? `Hallo ${esc(nickname)},` : "Hallo,";
+  return shell({
+    heading: "Neue E-Mail-Adresse bestätigen",
+    buttonLabel: "Neue E-Mail bestätigen",
+    link,
+    bodyHtml: `<p style="margin:0 0 12px 0;">${hi}</p>
+      <p style="margin:0;">für dein ClassSync-Konto wurde diese Adresse als neue E-Mail angefragt. Bestätige mit einem Klick, um die Änderung abzuschließen. Erst danach wird die neue Adresse aktiv. Wenn du das nicht warst, ignoriere diese E-Mail einfach.</p>`,
+  });
+}
+
 export const SUBJECTS = {
   verify: "Bestätige deine E-Mail-Adresse für ClassSync",
   reset: "Setze dein ClassSync-Passwort zurück",
+  changeEmail: "Bestätige deine neue E-Mail-Adresse für ClassSync",
 };

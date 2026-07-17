@@ -46,6 +46,8 @@
 - Registrierung mit **E-Mail, Passwort & Nickname** (E-Mail nie für andere sichtbar)
 - Login via Firebase Authentication, **Passwort vergessen** (Reset-Mail via Resend, s. §9 „Auth-Mails über Resend")
 - **E-Mail-Verifizierung als harte Sperre:** Unverifizierte Nutzer (neu registriert **oder** bestehend nach nächstem Login) sehen den `VerifyEmail`-Screen und erhalten erst nach Klick auf den Bestätigungslink Zugriff auf die App. **Verifizierungs- und Reset-Mails laufen in Prod gebrandet über Resend** (eigener Serverless-Endpoint erzeugt den Firebase-Action-Link; in DEV Firebase-Standardmail als Fallback – s. §9). **Traffic-schonend:** `emailVerified` aus dem lokalen ID-Token (kein Request), Auto-Versand **einmal** pro Screen-Besuch, Status-Check nur on-demand per Button (`reload()`), „Erneut senden" mit 60 s-Cooldown; kein Polling. Screen bietet zusätzlich „Abmelden" (falsche Adresse → neu registrieren).
+- **E-Mail-Adresse ändern** (Profil → „Dein Profil" → „E-Mail ändern", `ChangeEmailModal`): Reauthentifizierung mit aktuellem Passwort, dann Bestätigungslink an die **neue** Adresse (Prod gebrandet über Resend, DEV Firebase-Standardmail). Die Adresse wechselt erst nach Klick (`verifyBeforeUpdateEmail`-Mechanik); das denormalisierte `users.email` wird danach automatisch nachgezogen. Bereits vergebene Zieladresse → klare Meldung „E-Mail wird bereits verwendet". S. §9 „E-Mail-Adresse ändern".
+- **Account löschen** (Profil-Gefahrenzone **und** Onboarding, `DeleteAccountModal`): Reauthentifizierung, dann clientseitiger Cleanup + Auth-Delete. Umfang aktuell **„Mitgliedschaft + Profil"** (geteilte Inhalte bleiben mit Nickname erhalten). **Letzter Admin** einer Klasse → Löschen blockiert. Auch für **klassenlose** Nutzer im Onboarding erreichbar. S. §9 „Account löschen" (inkl. Plan für den DSGVO-Voll-Wipe).
 - Deutsche Fehlermeldungen via `authErrorText()` in `AuthContext.jsx`
 - URL-Parameter `?register=true` öffnet direkt das Registrierungsformular
 - Ohne Firebase-Keys in `.env.local` zeigt die App einen **Setup-Hinweis** statt zu crashen (`firebaseConfigured`-Check in `lib/firebase.js`)
@@ -138,11 +140,11 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 - Dashboard mit drei Karten: **offene eigene HAs** (mit Abhak-Checkbox), **kommende Prüfungen** (sortiert nach Nähe, mit Countdown-Pill), **zuletzt geteilte Materialien** (neueste 8) – jeweils mit Kurs-Chip, Klick navigiert zum Kurs
 
 ### Profil
-- Nickname ändern (live via Firestore-Listener), E-Mail-Anzeige (nur für einen selbst)
+- Nickname ändern (live via Firestore-Listener), E-Mail-Anzeige (nur für einen selbst) + **„E-Mail ändern"** (`ChangeEmailModal`, s. §9)
 - **„Deine Klassen"-Karte:** alle eigenen Klassen (`MembershipsContext.myClasses`), aktive markiert, „Wechseln" je Klasse, „Klasse hinzufügen" (`AddKlasseModal`); darunter **„Offene Einladungen"** (Migration, `openMigrations`) mit „Beitreten".
 - **Aktive Klasse:** Klassenname + Zugangscode mit **Kopieren-Button**, „Kurse verwalten", „Klasse verlassen" (letzter Admin gesperrt) und für Admins **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`).
 - **Mitgliederliste live** (Query `users where klasseIds array-contains <aktive Klasse>`), Admin-Badge 👑, Promote/Demote-Buttons für Klassen-Admins, Letzter-Admin-Schutz; **Entfernen/Sperren** je Mitglied + **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen)
-- Light/Dark-Toggle, Abmelden, ⚠️ Gefahrenzone (Klasse löschen – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen)
+- Light/Dark-Toggle, Abmelden, ⚠️ **Klassen-Gefahrenzone** (Klasse löschen, nur Admin – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen) und ⚠️ **Konto-Gefahrenzone** („Account löschen", für alle, `DeleteAccountModal`, s. §9)
 
 ### Landingpage (`classsync.de`)
 - `Landing.jsx`: Sticky Nav (Blur), Hero mit Gradient-Headline, Features-Grid (6), 3-Schritte-Sektion, CTA, Footer
@@ -191,9 +193,9 @@ ClassSync Fable/
 ├── .env.local                      ← Firebase-Client-Keys (VITE_*) + Server-Keys (RESEND/FIREBASE_*) für lokalen Test (NICHT in Git)
 ├── .claude/launch.json             ← Dev-Server-Config für Claude Code (npm run dev, Port 5173)
 ├── api/                            ← Vercel Serverless Functions
-│   ├── auth-email.js               ← Verify/Reset-Mail: Admin-SDK erzeugt Firebase-Action-Link → Versand via Resend
-│   └── _emailTemplates.js          ← gebrandete HTML-Mails (Verify + Reset), Inline-HTML/Tabellen-Layout
-├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy)
+│   ├── auth-email.js               ← Verify/Reset/ChangeEmail-Mail: Admin-SDK erzeugt Firebase-Action-Link → Versand via Resend (ChangeEmail mit Vorab-Check „Adresse frei?")
+│   └── _emailTemplates.js          ← gebrandete HTML-Mails (Verify + Reset + ChangeEmail), Inline-HTML/Tabellen-Layout
+├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy: verify|reset|changeEmail)
 ├── public/                         ← favicon.svg, icon-16/32/180/192/512.png, icons.svg
 └── src/
     ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal
@@ -203,13 +205,14 @@ ClassSync Fable/
     │   ├── dates.js                ← formatDatum, parseDatum, calcTage, tageLabel, relativeTime, formatUhrzeit, getKW, mondayOf, timeToMin, todayISO, dateToISO, WOCHENTAGE
     │   ├── faecher.js              ← FACH_VORLAGEN (18), MAT_TYPEN, MAT_COLORS, MAT_ICONS, DATEITYP_ICONS, KURS_FARBEN
     │   ├── klasseActions.js        ← generateCode/generateUniqueCode (Kollisionsprüfung), createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
+    │   ├── authActions.js          ← **NEU**: deleteAccount({user,profile,myClasses,currentPassword}) – Reauth, Letzter-Admin-Guard, Mitgliedschafts-Cleanup, users-Doc + Auth-User löschen. Naht (`TODO`) für DSGVO-Voll-Wipe (s. §9)
     │   ├── useKursCollection.js    ← Hook: Live-Listener auf eine Kurs-Subcollection; tsMillis()
     │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
     │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial
     │   └── useMediaQuery.js        ← useIsMobile (<768px), useIsWide (≥1200px)
     ├── context/
-    │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; authErrorText
+    │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; **changeEmail** (Reauth + Resend/DEV-Fallback) + **users.email-Sync** nach Wechsel; authErrorText
     │   ├── MembershipsContext.jsx  ← **NEU**: beobachtet ALLE eigenen Klassen (klasseIds). Liefert myClasses (Wechsler/Profil), openMigrations/pendingMigrations (Einladungen), und wirft bei Ban/Löschung klassenübergreifend selbst raus (arrayRemove aus klasseIds + activeKlasseId neu wählen)
     │   ├── ThemeContext.jsx        ← mode, toggle, t (Token-Objekt)
     │   ├── KlasseContext.jsx       ← Listener auf die **aktive** Klasse (klasse=null bei gelöscht/gesperrt; Eviction macht jetzt MembershipsContext), Kurse-Listener; meineKurse, isKlassenAdmin, canManageKurs
@@ -250,21 +253,23 @@ ClassSync Fable/
     │       ├── KlasseForm.jsx      ← **NEU**: geteiltes Beitreten/Erstellen-Formular (Tabs, Code/Name); exportiert KURSWAHL_FLAG. Von Onboarding UND AddKlasseModal genutzt
     │       ├── AddKlasseModal.jsx  ← **NEU**: weitere Klasse hinzufügen (kapselt KlasseForm im Modal)
     │       ├── MigrateKlasseModal.jsx ← **NEU**: Schuljahres-Migration starten (Ziel neu/bestehend) bzw. laufende beenden
+    │       ├── ChangeEmailModal.jsx ← **NEU**: neue E-Mail + aktuelles Passwort; sendet Bestätigungslink (Resend/Firebase), Erfolgs-/Fehlerzustand
+    │       ├── DeleteAccountModal.jsx ← **NEU**: Passwort-Reauth + Account löschen; `myClasses` als **Prop** (auch im Onboarding nutzbar), sichtbare Fehler (inkl. Letzter-Admin-Block)
     │       └── ConfirmDialog.jsx   ← generischer Bestätigungsdialog (busy-State; schluckt onConfirm-Fehler → Aufrufer muss selbst anzeigen)
     └── pages/
         ├── Landing.jsx             ← Marketing-Page (classsync.de)
         ├── Login.jsx               ← Login + Passwort-Reset-Flow
         ├── Register.jsx
         ├── VerifyEmail.jsx         ← E-Mail-Bestätigungs-Screen (harte Sperre): Auto-Versand, „Ich habe bestätigt" (reload), Resend mit Cooldown, Abmelden
-        ├── Onboarding.jsx          ← Klasse erstellen/beitreten (klassenlos); nutzt KlasseForm, re-exportiert KURSWAHL_FLAG
+        ├── Onboarding.jsx          ← Klasse erstellen/beitreten (klassenlos); nutzt KlasseForm, re-exportiert KURSWAHL_FLAG; **Abmelden + „Konto löschen"** (DeleteAccountModal, damit auch klassenlose Nutzer löschen können)
         ├── UebersichtPage.jsx      ← Startseite „/" (HAs + Prüfungen + neueste Materialien)
         ├── BibliothekPage.jsx      ← /bibliothek – kursübergreifende Materialsicht (Filter) + Sammlungen-Tab
         ├── KursPage.jsx            ← /kurs/:kursId – Header (inkl. Mitglieder-Button), Tabs, MaterialGrid, HA/Prüfungen/Chat
         ├── KalenderPage.jsx        ← /kalender (Woche/Monat; Stundenplan integriert)
-        └── ProfilPage.jsx          ← /profil – Nickname, **Deine Klassen** (Wechsel/Hinzufügen/Einladungen), aktive Klasse/Code, Mitglieder-Moderation, **Migration starten**, Gefahrenzone (mit Fehleranzeige)
+        └── ProfilPage.jsx          ← /profil – Nickname, **E-Mail ändern**, **Deine Klassen** (Wechsel/Hinzufügen/Einladungen), aktive Klasse/Code, Mitglieder-Moderation, **Migration starten**, Klassen-Gefahrenzone (Admin) + **Konto-Gefahrenzone „Account löschen" (für alle)**
 ```
 
-**Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen).
+**Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen). `test-resend.mjs` — lokaler Auth-Mail-Test (`verify|reset|changeEmail`) über Admin-SDK + Resend ohne Deploy (s. §9 E-Mail-Adresse ändern).
 
 **Routen:** `/` Übersicht · `/bibliothek` · `/kurs/:kursId` · `/kalender` · `/profil` · `/stundenplan` → Redirect auf `/kalender` · `*` → `/`
 **Sidebar-Nav:** Übersicht · Bibliothek · Kalender (+ Kursliste, Profil/Glocke/Theme unten)
@@ -390,6 +395,8 @@ ClassSync Fable/
 | Mitglied aus Klasse sperren/entsperren | ❌ | ❌ | ✅ |
 | Klasse selbst verlassen | ✅ | ✅ | ✅ (außer letzter Admin) |
 | Klasse löschen | ❌ | ❌ | ✅ |
+| Eigene E-Mail ändern | ✅ | ✅ | ✅ |
+| Eigenen Account löschen | ✅ | ✅ | ✅ (blockiert, solange letzter Admin einer Klasse) |
 
 \* Die **Rules** erlauben dem Kurs-Admin zusätzlich das Löschen fremder HAs/Prüfungen/Chat-Docs – das braucht die **Lösch-Kaskade** beim Kurs-Löschen. Die **UI** bietet diese Buttons aber nur Autor/Klassen-Admin an. Bei **Sammlungen** ist die Sammlung-Verwaltung (umbenennen/löschen/teilen) dem Ersteller vorbehalten; der Klassen-Admin darf Sammlungen nur für die **Lösch-Kaskade** beim Klassen-Löschen **lesen+löschen** (keine UI dafür – die Bibliothek zeigt nur eigene Sammlungen). Die Read-Erlaubnis für Admins ist nötig, damit die Kaskade alle Sammlungen auflisten kann (sonst `permission-denied` bei Fremd-Sammlungen).
 
@@ -400,7 +407,7 @@ ClassSync Fable/
 Vollständig in [`firestore.rules`](firestore.rules) und [`storage.rules`](storage.rules) – **Deployment manuell** über die Firebase Console (Copy-Paste → Veröffentlichen). Kernpunkte:
 
 - Helper: `isAuth()`, `uid()`, `me()` (get auf eigenes User-Doc), **`isMember(klasseId)` = `klasseId in me().get('klasseIds', [])`** (Multi-Klassen), `isKlassenAdmin(klasseId)`, **`isKursAdmin(klasseId, kursId)`** (get auf Kurs-Doc, vergleicht `erstellerId`)
-- `users`: **read** selbst **oder** wer mind. eine Klasse teilt (`resource.klasseIds.hasAny(me().klasseIds)`); create nur selbst; **update** nur selbst mit Multi-Klassen-Logik: `activeKlasseId` muss null oder in `klasseIds` sein, und beim **Hinzufügen** einer Klasse (klasseIds wächst per Set-`difference`) darf **nur genau** die neue `activeKlasseId` dazukommen und man darf dort nicht gesperrt sein (Ban-Schutz; Entfernen/Umsortieren frei). delete false
+- `users`: **read** selbst **oder** wer mind. eine Klasse teilt (`resource.klasseIds.hasAny(me().klasseIds)`); create nur selbst; **update** nur selbst mit Multi-Klassen-Logik: `activeKlasseId` muss null oder in `klasseIds` sein, und beim **Hinzufügen** einer Klasse (klasseIds wächst per Set-`difference`) darf **nur genau** die neue `activeKlasseId` dazukommen und man darf dort nicht gesperrt sein (Ban-Schutz; Entfernen/Umsortieren frei). **delete: nur das eigene Doc** (`uid()==userId`) – für die Account-Löschung (war vorher `false`)
 - `klassen`: read alle Auth-User (nötig für Code-Query beim Beitritt); create mit `uid in adminIds`; update/delete nur Admins (Ban = Admin schreibt `bannedIds`/`bannedInfo`; **Migration** = Admin schreibt `migration`-Feld – beides ohne Extra-Rule, weil Admins alle Felder dürfen)
 - `kurse`: create nur mit `erstellerId == uid` **und** `memberIds == [uid]`; update Klassen-Admin/Ersteller **oder** `affectedKeys().hasOnly(['memberIds'])` (= Selbst-Beitritt/-Austritt für jedes Mitglied); delete Klassen-Admin/Ersteller
 - `materialien`: update Admin/Autor oder `hasOnly(['likes'])`; **delete Klassen-Admin/Kurs-Admin/Autor**
@@ -459,6 +466,54 @@ Lokal läuft also immer die App; die Landingpage sieht man unter `localhost:5173
 - **Env-Vars (Vercel, unpräfixiert):** `RESEND_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (mehrzeilig – im Code `.replace(/\\n/g,"\n")`; im Vercel-Feld **ohne** umschließende Anführungszeichen!). Optional `MAIL_FROM`, `AUTH_CONTINUE_URL`.
 - **Lokaler Test ohne Deploy:** `node scripts/test-resend.mjs <email> [verify|reset]` – liest `.env.local`, prüft Admin-Credentials, erzeugt Link, sendet über Resend (dieselbe Kette wie der Endpoint).
 - ⚠️ **`api/*` nicht vom SPA-Rewrite schlucken lassen:** `vercel.json`-Rewrite nutzt Negative-Lookahead `"/((?!api/).*)"`; `vite.config.js` hat `workbox.navigateFallbackDenylist: [/^\/api/]`, damit der Service-Worker die API nicht abfängt.
+
+### E-Mail-Adresse ändern (`AuthContext.changeEmail`, `ChangeEmailModal`, `api/auth-email.js`)
+- **Flow:** Reauth (`reauthenticateWithCredential` + `EmailAuthProvider.credential`) → **Prod:** `idToken` an den Endpoint (`type:"changeEmail"`, `{ idToken, newEmail }`); **DEV:** `verifyBeforeUpdateEmail(auth.currentUser, newEmail)` (Firebase-Standardmail, damit `npm run dev` ohne `vercel dev` läuft).
+- **Endpoint** erzeugt `auth.generateVerifyAndChangeEmailLink(current, newEmail, acs)` (Admin-SDK) und schickt die **gebrandete** Mail (`changeEmailHtml`) an die **neue** Adresse. Vorab-`getUserByEmail(newEmail)`-Check → belegte Adresse gibt `409 email-already-in-use` (**wichtig**, weil der Link-Generator sonst einen kryptischen `INTERNAL ASSERT` statt `auth/email-already-exists` wirft). Rate-Limit-Key `c:${uid}`.
+- **Nach Klick** wechselt Firebase die Konto-E-Mail; der **`users.email`-Sync** im Profil-Listener (`AuthContext`, `onSnapshot`) zieht das denormalisierte Feld beim nächsten Snapshot nach (`auth.currentUser.email !== data.email` → `updateDoc`).
+- ⚠️ **Man kann nicht auf eine bereits registrierte Adresse wechseln.** Firebase verweigert das; in **DEV** sogar **still** (Enumeration-Schutz) → es kommt gar keine Mail und ggf. kein Fehler. Das ist **erwartetes Verhalten, kein Bug**. Für einen echten End-to-End-Test eine frische Adresse nehmen (z. B. Gmail-`+alias`, gilt als neue Adresse, landet im selben Postfach).
+- **Lokaltest ohne Deploy:** `node scripts/test-resend.mjs <neue-email> changeEmail <aktuelle-konto-email>` – erzeugt bei freier Zieladresse einen **echten** Wechsel-Link, bei belegter Zieladresse automatisch einen **Platzhalter-Link** (nur Zustellung/Design werden dann getestet). Braucht die Server-Keys in `.env.local`.
+
+### Account löschen (`lib/authActions.js`, `DeleteAccountModal`, `ProfilPage`, `Onboarding`)
+- **Umfang heute: „Mitgliedschaft + Profil".** `deleteAccount({ user, profile, myClasses, currentPassword })`:
+  1. **Reauth** (aktuelles Passwort).
+  2. **Letzter-Admin-Guard:** Klassen mit `adminIds == [uid]` → Abbruch mit `err.code = "account/last-admin"` + Klassennamen (Löschen blockiert; das Modal zeigt `err.message` direkt, alle anderen Fehler über `authErrorText`).
+  3. Pro Klasse in `klasseIds`: aus allen `kurse.memberIds` austreten (`setKursMembership(..., false)`), ggf. aus `adminIds` (`arrayRemove`).
+  4. `deleteDoc(users/{uid})` (Rule erlaubt Selbst-Löschen).
+  5. `user.delete()` **zuletzt** – danach hat der Client keine Firestore-Rechte mehr, **Reihenfolge ist zwingend**. Bei Erfolg räumt Firebase die Session ab → das Auth-Gate rendert automatisch den Login (kein manuelles Routing).
+- **Geteilte Inhalte bleiben** (Materialien, HAs, Prüfungen, Chat, eigene Sammlungen) mit denormalisiertem Nickname erhalten.
+- **Erreichbarkeit für ALLE:** Button in der **Konto-Gefahrenzone** der `ProfilPage` (getrennt von der Admin-only Klassen-Gefahrenzone) **und** im **Onboarding** („Konto löschen"), damit auch **klassenlose** Nutzer löschen können (das Gate zeigt bei `klasseIds`-leer nur das Onboarding). Deshalb bekommt `DeleteAccountModal` `myClasses` als **Prop** (nicht aus `useMemberships`) – im Onboarding gibt es keinen `MembershipsProvider`; dort ist `myClasses={[]}`.
+- **Rule-Änderung:** `users` `allow delete: if isAuth() && uid()==userId` (war `false`).
+
+### DSGVO-Voll-Wipe (geplant – Anleitung zum Umbau)
+> Ziel: beim Kontolöschen **alle** vom Nutzer erzeugten personenbezogenen Daten entfernen, nicht nur Mitgliedschaft/Profil. Die Erweiterungs-**Naht** liegt in `lib/authActions.js` (markiertes `TODO` in der Klassen-Schleife).
+
+**uid-/Personen-Fußabdruck (alle Stellen, an denen uid, Nickname oder Inhalte hängen):**
+- `users/{uid}` – Doc selbst (heute schon gelöscht).
+- `klassen/{k}`: `adminIds[]`, `bannedIds[]`, `bannedInfo[uid]`, `migration.memberIds[]`.
+- `klassen/{k}/kurse/{c}`: `erstellerId`, `erstellerNick`, `memberIds[]`.
+- `…/materialien/*`: `autorId`, `autor` (Nick), `likes[]` – **plus Storage-Datei** unter `storagePath`.
+- `…/hausaufgaben/*`: `autorId`, `autor`, `doneBy[]`, `hiddenBy[]`.
+- `…/pruefungen/*`: `autorId`, `autor`.
+- `…/chat/*`: `autorId`, `autor`, `text`.
+- `…/sammlungen/*`: `ownerId`, `ownerNick`, `memberIds[]`.
+
+**Was clientseitig geht (Rules erlauben es Autor/Mitglied schon heute):** eigene **Materialien** löschen (`autorId==uid`) inkl. Storage (`deleteObject(storagePath)`), **HAs**/**Prüfungen** löschen, **eigene Sammlungen** löschen (`ownerId==uid`) bzw. aus geteilten austreten (`sammlungActions.leaveSammlung`), sowie `likes`/`doneBy`/`hiddenBy`/`memberIds` per `arrayRemove(uid)` bereinigen (diese Felder darf jedes Mitglied ändern).
+
+**Was clientseitig NICHT geht → braucht einen Admin-SDK-Endpoint:**
+- **Chat hart löschen:** Autoren dürfen nur *tombstone* (`update deleted:true`), **kein `delete`** (Rule: nur Klassen-/Kurs-Admin). Für echte Löschung Admin-SDK.
+- **Fremd-Klassen-Referenzen:** `bannedIds`/`bannedInfo`/`migration.memberIds` in Klassen, in denen der Nutzer **kein Admin** ist, kann der Client nicht schreiben.
+- **Vom Nutzer erstellte Kurse** (`erstellerId==uid`): entweder kaskadierend löschen (`deleteKurs` – betrifft dann Inhalte **anderer**!) oder `erstellerId` neu zuweisen → **bewusste Design-Entscheidung**.
+- **Letzter-Admin-Klassen:** heute blockiert; für den Voll-Wipe entscheiden, ob sie **auto-kaskadierend gelöscht** werden (`deleteKlasse`) oder der Block bleibt.
+
+**Empfohlene Architektur – neuer Endpoint `api/delete-account.js`** (analog `api/auth-email.js`; gleiche Admin-Env-Vars `FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY`; `getApps()`-Guard; zusätzlich `firebase-admin/firestore` + `firebase-admin/storage` mit Bucket `classsync-v2.firebasestorage.app`):
+1. `verifyIdToken` (Client reautht vorher per Passwort → frisches Token).
+2. Admin (umgeht Rules): pro Klasse des Nutzers alle Subcollections nach `autorId==uid` löschen (**Chat hart**), Storage-Dateien via `storagePath`/`listAll` entfernen, eigene Sammlungen löschen, `likes/doneBy/hiddenBy/memberIds/adminIds/bannedIds/bannedInfo/migration.memberIds` bereinigen.
+3. Kurse mit `erstellerId==uid` gemäß Design-Entscheidung behandeln.
+4. `users/{uid}` löschen, dann `admin.auth().deleteUser(uid)`.
+5. Client: nach `200` `signOut()` (Session serverseitig bereits invalidiert).
+- **Alternativ hybrid:** Client löscht die author-eigenen Docs (Rules erlauben es) und der Endpoint macht nur **Chat-Hard-Delete + Fremd-Referenzen + Auth-Delete**. Ein **einziger** Admin-Endpoint ist aber robuster/atomarer.
+- **Muster wiederverwenden:** `deleteSubcollection`/`deleteKurs`/`deleteKlasse` (Batching, Storage-`listAll`, `stepError`-Kontext) aus `lib/klasseActions.js` als Vorlage; den Reauth-Flow aus `authActions.deleteAccount`. Rechte-/Kaskaden-Merksatz beachten: **man kann nur löschen, was man auch lesen darf** (Admin-SDK umgeht das, aber die Reihenfolge Kurs-/Klassen-Doc **zuletzt** gilt weiterhin, falls doch Rules greifen).
 
 ### Kurswahl nach Beitritt
 `joinByCode()` setzt `sessionStorage["classsync_showKurswahl"]="1"`; `AppShell` liest das Flag einmalig beim Mount und öffnet das Modal.
@@ -531,6 +586,8 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 
 - **Multi-Klassen: nur EINE aktive Klasse** gleichzeitig sichtbar (bewusst – hält den Feature-Code single-class). Kein gleichzeitiger Blick über alle Klassen. **Klasse verlassen** geht nur für die aktive Klasse (sonst fehlt die geladene Kursliste zum Aufräumen). Beim Wechsel remountet der Baum kurz (Spinner).
 - **Feld-Migration:** neu registrierte/ eingeloggte User sind sofort auf `klasseIds`; noch nie eingeloggte Alt-User erscheinen erst nach dem **einmaligen Backfill** (`scripts/backfill-klasseids.mjs`) in fremden Mitgliederlisten (die Lazy-Migration greift erst bei deren nächstem Login).
+- **Account-Löschung = „Mitgliedschaft + Profil"** (geteilte Inhalte bleiben mit Nickname erhalten). Der **DSGVO-Voll-Wipe** (alle Autor-Inhalte + Chat-Hard-Delete + Fremd-Referenzen) ist noch **offen** – kompletter Umbauplan inkl. uid-Fußabdruck und `api/delete-account.js`-Architektur in §9 „DSGVO-Voll-Wipe (geplant)".
+- **E-Mail-Wechsel** nur auf **freie** Adressen (Firebase-Vorgabe); in DEV verweigert Firebase belegte Adressen still (kein Fehler/keine Mail).
 - **Keine Push-Notifications** – nur In-App (FCM wäre der nächste Schritt, braucht Blaze-Plan)
 - **Keine Offline-Unterstützung**
 - **Max. Dateigröße 10 MB** (`MAX_MB` in `UploadModal.jsx` + Storage-Rules – beide Stellen ändern!)

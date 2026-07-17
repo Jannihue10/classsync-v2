@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  verifyBeforeUpdateEmail,
 } from "firebase/auth";
 import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
@@ -18,6 +21,8 @@ const ENDPOINT_ERR_MAP = {
   "too-many-requests": "auth/too-many-requests",
   "invalid-email": "auth/invalid-email",
   "no-email-on-account": "auth/invalid-email",
+  "email-already-in-use": "auth/email-already-in-use",
+  "same-email": "auth/same-email",
 };
 
 // POST an die serverlose Auth-Mail-Function (Prod). Wirft bei Nicht-2xx einen Fehler
@@ -85,6 +90,13 @@ export function AuthProvider({ children }) {
             data.klasseIds = legacy ? [legacy] : [];
             data.activeKlasseId = legacy;
           }
+          // E-Mail-Sync: nach einem bestätigten E-Mail-Wechsel (verifyAndChangeEmail) ist die
+          // Auth-Adresse aktuell, das denormalisierte users.email aber noch alt -> nachziehen.
+          const authEmail = auth.currentUser?.email;
+          if (authEmail && data.email !== authEmail) {
+            updateDoc(doc(db, "users", user.uid), { email: authEmail }).catch(() => {});
+            data.email = authEmail;
+          }
           setProfile({ uid: user.uid, ...data });
         } else {
           setProfile(null);
@@ -140,13 +152,26 @@ export function AuthProvider({ children }) {
     return verified;
   }
 
+  // E-Mail-Adresse ändern. Erfordert Reauthentifizierung (aktuelles Passwort) und schickt
+  // einen Bestätigungslink an die NEUE Adresse – erst nach Klick wechselt Firebase die E-Mail.
+  // Prod: gebrandete Resend-Mail über den Endpoint. DEV: Firebase-Standardmail als Fallback
+  // (verifyBeforeUpdateEmail), damit `npm run dev` ohne `vercel dev` läuft.
+  async function changeEmail(newEmail, currentPassword) {
+    const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, cred);
+    const next = newEmail.trim();
+    if (import.meta.env.DEV) return verifyBeforeUpdateEmail(auth.currentUser, next);
+    const idToken = await auth.currentUser.getIdToken();
+    await postAuthEmail("changeEmail", { idToken, newEmail: next });
+  }
+
   function updateProfile(fields) {
     return updateDoc(doc(db, "users", user.uid), fields);
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, emailVerified, loading, profileLoading, register, login, logout, resetPassword, sendVerification, reloadVerification, updateProfile }}
+      value={{ user, profile, emailVerified, loading, profileLoading, register, login, logout, resetPassword, sendVerification, reloadVerification, changeEmail, updateProfile }}
     >
       {children}
     </AuthContext.Provider>
@@ -169,6 +194,9 @@ export function authErrorText(err) {
     "auth/weak-password": "Passwort zu schwach (mind. 6 Zeichen).",
     "auth/too-many-requests": "Zu viele Versuche. Bitte später erneut versuchen.",
     "auth/network-request-failed": "Netzwerkfehler. Bitte Verbindung prüfen.",
+    "auth/requires-recent-login": "Bitte melde dich zur Sicherheit erneut an und versuche es dann noch einmal.",
+    "auth/same-email": "Das ist bereits deine aktuelle E-Mail-Adresse.",
+    "auth/missing-password": "Bitte gib dein Passwort ein.",
   };
   return map[code] || "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
 }

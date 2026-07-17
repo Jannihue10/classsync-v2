@@ -48,7 +48,9 @@ service cloud.firestore {
               .difference(resource.data.get('klasseIds', []).toSet()).size() == 1 &&
             !(uid() in get(/databases/$(database)/documents/klassen/$(request.resource.data.activeKlasseId)).data.get('bannedIds', [])) )
         );
-      allow delete: if false;
+      // Nur das eigene Doc löschen (Account-Löschung). Cleanup der Mitgliedschaften läuft
+      // clientseitig vorher; geteilte Inhalte bleiben (denormalisierter Nickname).
+      allow delete: if isAuth() && uid() == userId;
     }
 
     match /klassen/{klasseId} {

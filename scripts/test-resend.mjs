@@ -1,5 +1,6 @@
 // Wegwerf-Testskript: prüft die Auth-Mail-Kette lokal ohne Vercel/Deploy.
 //   node scripts/test-resend.mjs <empfaenger-email> [verify|reset]
+//   node scripts/test-resend.mjs <neue-email> changeEmail <aktuelle-konto-email>
 // Liest .env.local (RESEND_API_KEY, FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY),
 // initialisiert das Admin-SDK, erzeugt einen Firebase-Action-Link und schickt die
 // gebrandete Mail über Resend – identisch zu api/auth-email.js.
@@ -9,7 +10,7 @@ import { dirname, join } from "node:path";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { Resend } from "resend";
-import { verifyEmailHtml, resetEmailHtml, SUBJECTS } from "../api/_emailTemplates.js";
+import { verifyEmailHtml, resetEmailHtml, changeEmailHtml, SUBJECTS } from "../api/_emailTemplates.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -27,8 +28,15 @@ for (const line of readFileSync(join(here, "..", ".env.local"), "utf8").split(/\
 
 const to = process.argv[2];
 const type = process.argv[3] || "reset";
-if (!to) {
+// changeEmail: `to` ist die NEUE Adresse (Empfänger), argv[4] = aktuelle Konto-Adresse.
+const currentEmail = process.argv[4];
+if (!to || !["verify", "reset", "changeEmail"].includes(type)) {
   console.error("Nutzung: node scripts/test-resend.mjs <empfaenger-email> [verify|reset]");
+  console.error("         node scripts/test-resend.mjs <neue-email> changeEmail <aktuelle-konto-email>");
+  process.exit(1);
+}
+if (type === "changeEmail" && !currentEmail) {
+  console.error("changeEmail braucht die aktuelle Konto-Adresse als 3. Argument.");
   process.exit(1);
 }
 
@@ -57,18 +65,41 @@ try {
 
 // 2) Firebase-Action-Link erzeugen (bei unbekanntem User: Platzhalter, damit der
 //    Resend-Versand trotzdem getestet wird).
+//    changeEmail: Link basiert auf der AKTUELLEN Konto-Adresse -> Wechsel auf `to`.
+const linkSubject = type === "changeEmail" ? currentEmail : to;
 let link, note = "";
+// changeEmail: ist die Zieladresse schon vergeben, ist kein echter Wechsel-Link möglich
+// (Firebase wirft dann einen kryptischen INTERNAL-ASSERT). Für einen reinen Zustell-/Design-Test
+// weichen wir dann auf einen Platzhalter-Link aus.
+if (type === "changeEmail") {
+  try {
+    const existing = await auth.getUserByEmail(to);
+    link = "https://app.classsync.de/__test-link__";
+    note = ` (Hinweis: ${to} ist bereits ein Konto [uid ${existing.uid}] -> kein echter Wechsel-Link möglich, Platzhalter-Link; nur Zustellung/Design werden getestet)`;
+    console.log(`[warn] Zieladresse ${to} ist belegt -> Platzhalter-Link.`);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") {
+      console.error("[FEHLER] Prüfung der Zieladresse:", e.message);
+      process.exit(1);
+    }
+    // frei -> weiter unten echten Link erzeugen
+  }
+}
 try {
-  link =
-    type === "verify"
-      ? await auth.generateEmailVerificationLink(to, acs)
-      : await auth.generatePasswordResetLink(to, acs);
-  console.log(`[ok] ${type}-Link erzeugt.`);
+  if (link) {
+    // Platzhalter bereits gesetzt (changeEmail auf belegte Adresse)
+  } else if (type === "verify") link = await auth.generateEmailVerificationLink(to, acs);
+  else if (type === "reset") link = await auth.generatePasswordResetLink(to, acs);
+  else link = await auth.generateVerifyAndChangeEmailLink(currentEmail, to, acs);
+  if (!note) console.log(`[ok] ${type}-Link erzeugt.`);
 } catch (e) {
   if (e.code === "auth/user-not-found") {
     link = "https://app.classsync.de/__test-link__";
-    note = " (Hinweis: kein Firebase-Konto zu dieser Adresse -> Platzhalter-Link, nur Versand/Design werden getestet)";
-    console.log(`[warn] Kein Konto zu ${to} -> Platzhalter-Link.`);
+    note = ` (Hinweis: kein Firebase-Konto zu ${linkSubject} -> Platzhalter-Link, nur Versand/Design werden getestet)`;
+    console.log(`[warn] Kein Konto zu ${linkSubject} -> Platzhalter-Link.`);
+  } else if (e.code === "auth/email-already-exists") {
+    console.error(`[FEHLER] ${to} wird bereits von einem Konto verwendet – für den changeEmail-Link muss die neue Adresse frei sein.`);
+    process.exit(1);
   } else {
     console.error("[FEHLER] Link-Erzeugung:", e.message);
     process.exit(1);
@@ -77,7 +108,12 @@ try {
 
 // 3) Über Resend versenden.
 const resend = new Resend(env.RESEND_API_KEY);
-const html = type === "verify" ? verifyEmailHtml({ link }) : resetEmailHtml({ link });
+const html =
+  type === "verify"
+    ? verifyEmailHtml({ link })
+    : type === "reset"
+      ? resetEmailHtml({ link })
+      : changeEmailHtml({ link });
 const { data, error } = await resend.emails.send({
   from: FROM,
   to,

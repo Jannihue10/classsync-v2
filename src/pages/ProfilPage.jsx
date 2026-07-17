@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRightLeft, Check, Copy, Crown, GraduationCap, LogOut, Moon, Plus, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
+import { ArrowRightLeft, Check, Copy, Crown, GraduationCap, LogOut, Mail, Moon, Plus, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +10,8 @@ import { acceptMigration, banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse,
 import { radius } from "../styles/theme";
 import { Btn, Card, Divider, Input, SectionTitle, Spinner } from "../components/ui/UI";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
+import ChangeEmailModal from "../components/modals/ChangeEmailModal";
+import DeleteAccountModal from "../components/modals/DeleteAccountModal";
 import MigrateKlasseModal from "../components/modals/MigrateKlasseModal";
 import PageHeader from "../components/layout/PageHeader";
 
@@ -29,6 +31,8 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   // Klassenmitglieder live
   const [mitglieder, setMitglieder] = useState(null);
@@ -92,9 +96,14 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
               ) : "Speichern"}
             </Btn>
           </form>
-          <p style={{ margin: "10px 0 0", fontSize: 12.5, color: t.textFaint }}>
-            Angemeldet als {profile.email} – deine E-Mail ist für andere nie sichtbar.
-          </p>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", marginTop: 10 }}>
+            <p style={{ margin: 0, fontSize: 12.5, color: t.textFaint }}>
+              Angemeldet als {profile.email} – deine E-Mail ist für andere nie sichtbar.
+            </p>
+            <Btn small variant="soft" onClick={() => setEmailOpen(true)}>
+              <Mail size={14} strokeWidth={1.8} /> E-Mail ändern
+            </Btn>
+          </div>
           <Divider />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Btn small variant="soft" onClick={toggle}>
@@ -398,6 +407,21 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
             )}
           </Card>
         )}
+
+        {/* Konto-Gefahrenzone (für alle sichtbar) */}
+        <Card style={{ padding: 18, borderColor: `${t.danger}44` }}>
+          <SectionTitle>
+            <TriangleAlert size={15} strokeWidth={1.8} color={t.danger} /> Account löschen
+          </SectionTitle>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: t.textMuted, lineHeight: 1.55 }}>
+            Löscht dein ClassSync-Konto endgültig und entfernt dich aus allen Klassen und Kursen.
+            Bereits geteilte Inhalte bleiben mit deinem Nickname erhalten. Bist du letzter Admin einer
+            Klasse, musst du zuerst die Rolle übertragen oder die Klasse löschen.
+          </p>
+          <Btn small variant="dangerGhost" onClick={() => setDeleteAccountOpen(true)}>
+            <Trash2 size={13.5} strokeWidth={1.8} /> Account löschen
+          </Btn>
+        </Card>
       </div>
 
       {deleteOpen && (
@@ -445,6 +469,12 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
           myClasses={myClasses}
           onClose={() => setMigrateOpen(false)}
         />
+      )}
+
+      {emailOpen && <ChangeEmailModal onClose={() => setEmailOpen(false)} />}
+
+      {deleteAccountOpen && (
+        <DeleteAccountModal myClasses={myClasses} onClose={() => setDeleteAccountOpen(false)} />
       )}
     </div>
   );
