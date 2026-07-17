@@ -5,7 +5,8 @@ import {
 import { deleteObject, listAll, ref as storageRef } from "firebase/storage";
 import { db, storage } from "./firebase";
 
-// 5-stelliger Zugangscode; ohne leicht verwechselbare Zeichen (0/O, 1/I)
+// 5-stelliger Zugangscode; ohne leicht verwechselbare Zeichen (0/O, 1/I).
+// Reine Zufallslogik – die Eindeutigkeit wird über generateUniqueCode() sichergestellt.
 export function generateCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -13,10 +14,25 @@ export function generateCode() {
   return code;
 }
 
+// Würfelt so lange, bis ein Code gefunden ist, den noch keine Klasse belegt.
+// Verhindert doppelte Codes (sonst würde joinByCode bei mehreren Treffern
+// blind docs[0] nehmen -> Beitritt in die falsche Klasse).
+async function generateUniqueCode(maxTries = 8) {
+  for (let i = 0; i < maxTries; i++) {
+    const code = generateCode();
+    const snap = await getDocs(
+      query(collection(db, "klassen"), where("code", "==", code))
+    );
+    if (snap.empty) return code;
+  }
+  throw new Error("Konnte keinen freien Klassencode erzeugen. Bitte erneut versuchen.");
+}
+
 export async function createKlasse(name, uid) {
+  const code = await generateUniqueCode();
   const klasseRef = await addDoc(collection(db, "klassen"), {
     name: name.trim(),
-    code: generateCode(),
+    code,
     adminIds: [uid],
     createdAt: Date.now(),
   });
