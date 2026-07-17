@@ -52,7 +52,7 @@
 
 ### Klassen
 - Jeder eingeloggte User kann eine Klasse erstellen → wird automatisch erster Admin
-- **5-stelliger Zugangscode**, ohne verwechselbare Zeichen (kein 0/O/1/I), Generator in `lib/klasseActions.js`
+- **5-stelliger Zugangscode**, ohne verwechselbare Zeichen (kein 0/O/1/I), Generator in `lib/klasseActions.js`. **Eindeutig:** `createKlasse` vergibt den Code über `generateUniqueCode()`, das vor dem Schreiben per Query prüft, ob er schon existiert, und sonst neu würfelt (sonst nähme `joinByCode` bei Doppel-Code blind `docs[0]` → Beitritt in die falsche Klasse)
 - Beitritt per Code → **Kurswahlmodal öffnet automatisch** (sessionStorage-Flag `classsync_showKurswahl`)
 - **Multi-Klassen (Juli 2026):** Ein User kann Mitglied **mehrerer Klassen** sein. Mitgliedschaft liegt als **`users.klasseIds[]`**; die gerade sichtbare Klasse ist **`users.activeKlasseId`**. Die App bleibt immer auf **eine aktive Klasse** skopiert (der ganze Feature-Code arbeitet unverändert gegen `klasse.id`) – der `KlasseProvider` wird per `key={activeKlasseId}` neu gemountet, wenn man wechselt.
 - **Klassen-Wechsler:** Dropdown in der **Sidebar-Kopfzeile** (Klassenname → Liste aller eigenen Klassen + „Klasse hinzufügen") und **Profil → „Deine Klassen"**. Wechsel = `switchActiveKlasse` (setzt `activeKlasseId`). „Klasse hinzufügen" öffnet `AddKlasseModal` (dasselbe Beitreten/Erstellen-Formular wie das Onboarding, `KlasseForm`).
@@ -202,7 +202,7 @@ ClassSync Fable/
     │   ├── firebase.js             ← Init aus import.meta.env; exportiert db, auth, storage, firebaseConfigured
     │   ├── dates.js                ← formatDatum, parseDatum, calcTage, tageLabel, relativeTime, formatUhrzeit, getKW, mondayOf, timeToMin, todayISO, dateToISO, WOCHENTAGE
     │   ├── faecher.js              ← FACH_VORLAGEN (18), MAT_TYPEN, MAT_COLORS, MAT_ICONS, DATEITYP_ICONS, KURS_FARBEN
-    │   ├── klasseActions.js        ← generateCode, createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
+    │   ├── klasseActions.js        ← generateCode/generateUniqueCode (Kollisionsprüfung), createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
     │   ├── useKursCollection.js    ← Hook: Live-Listener auf eine Kurs-Subcollection; tsMillis()
     │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
@@ -288,7 +288,7 @@ ClassSync Fable/
 
 /klassen/{klasseId}
   name:       string
-  code:       string             ← 5-stellig, ohne 0/O/1/I
+  code:       string             ← 5-stellig, ohne 0/O/1/I; eindeutig (generateUniqueCode-Check beim Erstellen)
   adminIds:   string[]           ← Multi-Admin
   bannedIds:  string[]           ← gesperrte uids (Rejoin-Sperre + Selbst-Eviction), optional
   bannedInfo: { uid: nickname }  ← denormalisierte Nicknames der Gesperrten (Anzeige), optional
