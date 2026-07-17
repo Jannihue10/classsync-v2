@@ -1,5 +1,5 @@
 # ClassSync – Vollständiges Handoff-Dokument (v2 / „Fable"-Rebuild)
-*Zuletzt aktualisiert: 16. Juli 2026*
+*Zuletzt aktualisiert: 17. Juli 2026*
 
 > Dieses Projekt ist ein **kompletter Neubau** der ursprünglichen ClassSync-App
 > (alter Prototyp: `C:\Users\janni\classsync`). Gleicher Tech-Stack, neues
@@ -35,7 +35,7 @@
 
 **Hinweise:**
 - Deployment Protection („Vercel Authentication") wurde für das Projekt deaktiviert, sonst wäre die Seite nicht öffentlich.
-- Die GitHub↔Vercel-Verknüpfung (Auto-Deploy bei Push) schlug per CLI fehl und muss ggf. im Vercel-Dashboard unter Settings → Git nachgeholt werden. Bis dahin: manuell mit `vercel --prod` deployen.
+- **GitHub↔Vercel Auto-Deploy ist aktiv** (bestätigt 17. Juli 2026): Push auf `main` → Production, Branch-Push → Preview. **Preview-Deployments sind per „Vercel Authentication" (SSO) geschützt** (Settings → Deployment Protection) – für anonyme curl-Tests der Preview muss die Protection kurz deaktiviert werden; Production ist öffentlich.
 - In Firebase **Authentication** existieren noch Test-Accounts aus E2E-Tests, die gelöscht werden können: `classsync.test.a@testmail.de`, `classsync.test.b@testmail.de` (leere `users`-Dokumente) sowie `classsync.test.verify@testmail.de` (aus dem Verifizierungs-Test – unverifiziert, mit `users`-Doc; per Client-Rules nicht löschbar → in der Console entfernen).
 
 ---
@@ -44,8 +44,8 @@
 
 ### Auth & Nutzer
 - Registrierung mit **E-Mail, Passwort & Nickname** (E-Mail nie für andere sichtbar)
-- Login via Firebase Authentication, **Passwort vergessen** (Firebase-Reset-Mail)
-- **E-Mail-Verifizierung als harte Sperre:** Unverifizierte Nutzer (neu registriert **oder** bestehend nach nächstem Login) sehen den `VerifyEmail`-Screen und erhalten erst nach Klick auf den Bestätigungslink Zugriff auf die App. Standard-Verifizierungs-Mail des E-Mail/Passwort-Providers (kein Firebase-Extra-Setup). **Traffic-schonend:** `emailVerified` aus dem lokalen ID-Token (kein Request), Auto-Versand **einmal** pro Screen-Besuch, Status-Check nur on-demand per Button (`reload()`), „Erneut senden" mit 60 s-Cooldown; kein Polling. Screen bietet zusätzlich „Abmelden" (falsche Adresse → neu registrieren).
+- Login via Firebase Authentication, **Passwort vergessen** (Reset-Mail via Resend, s. §9 „Auth-Mails über Resend")
+- **E-Mail-Verifizierung als harte Sperre:** Unverifizierte Nutzer (neu registriert **oder** bestehend nach nächstem Login) sehen den `VerifyEmail`-Screen und erhalten erst nach Klick auf den Bestätigungslink Zugriff auf die App. **Verifizierungs- und Reset-Mails laufen in Prod gebrandet über Resend** (eigener Serverless-Endpoint erzeugt den Firebase-Action-Link; in DEV Firebase-Standardmail als Fallback – s. §9). **Traffic-schonend:** `emailVerified` aus dem lokalen ID-Token (kein Request), Auto-Versand **einmal** pro Screen-Besuch, Status-Check nur on-demand per Button (`reload()`), „Erneut senden" mit 60 s-Cooldown; kein Polling. Screen bietet zusätzlich „Abmelden" (falsche Adresse → neu registrieren).
 - Deutsche Fehlermeldungen via `authErrorText()` in `AuthContext.jsx`
 - URL-Parameter `?register=true` öffnet direkt das Registrierungsformular
 - Ohne Firebase-Keys in `.env.local` zeigt die App einen **Setup-Hinweis** statt zu crashen (`firebaseConfigured`-Check in `lib/firebase.js`)
@@ -168,8 +168,10 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 | Datenbank | Firebase Firestore (`firebase ^10.11.0`, Echtzeit-Listener überall) |
 | Auth | Firebase Authentication (E-Mail/Passwort) |
 | Datei-Upload | Firebase Storage (`uploadBytesResumable` mit Progress) |
+| Transaktions-Mails | Resend (`resend ^4`) via Serverless-Function `api/auth-email.js`; Links erzeugt mit `firebase-admin ^12` (Admin-SDK) |
+| Serverless | Vercel Functions im `api/`-Verzeichnis (ESM, `firebase-admin` + `resend` als echte Dependencies) |
 | PWA | vite-plugin-pwa (`^1.3.0`) |
-| Hosting | Vercel (SPA-Rewrite via `vercel.json`) |
+| Hosting | Vercel (SPA-Rewrite via `vercel.json`, `api/*` ausgenommen) |
 | Styling | Inline Styles + Design-Tokens (kein CSS-Framework) |
 | Icons | lucide-react (`^1.24`), tree-shakeable Linien-Icons |
 | Fonts | Inter (Google Fonts, via `index.html`) |
@@ -181,14 +183,17 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 ```
 ClassSync Fable/
 ├── index.html                      ← PWA-Meta, Inter, CSS-Reset + Keyframes
-├── vite.config.js                  ← react() + VitePWA (Manifest)
-├── vercel.json                     ← SPA-Rewrite: alle Pfade → /index.html
+├── vite.config.js                  ← react() + VitePWA (Manifest, workbox.navigateFallbackDenylist [/^\/api/])
+├── vercel.json                     ← SPA-Rewrite: alle Pfade → /index.html, /api/* per Negative-Lookahead ausgenommen
 ├── package.json
 ├── firestore.rules                 ← im Repo versioniert; deployen: Firebase Console → Firestore → Regeln
 ├── storage.rules                   ← dito (Console → Storage → Rules)
-├── .env.local                      ← Firebase-Keys + VERCEL_OIDC_TOKEN (NICHT in Git)
+├── .env.local                      ← Firebase-Client-Keys (VITE_*) + Server-Keys (RESEND/FIREBASE_*) für lokalen Test (NICHT in Git)
 ├── .claude/launch.json             ← Dev-Server-Config für Claude Code (npm run dev, Port 5173)
-├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration, Firebase-Admin-SDK)
+├── api/                            ← Vercel Serverless Functions
+│   ├── auth-email.js               ← Verify/Reset-Mail: Admin-SDK erzeugt Firebase-Action-Link → Versand via Resend
+│   └── _emailTemplates.js          ← gebrandete HTML-Mails (Verify + Reset), Inline-HTML/Tabellen-Layout
+├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy)
 ├── public/                         ← favicon.svg, icon-16/32/180/192/512.png, icons.svg
 └── src/
     ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal
@@ -530,7 +535,7 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 - **Keine Offline-Unterstützung**
 - **Max. Dateigröße 10 MB** (`MAX_MB` in `UploadModal.jsx` + Storage-Rules – beide Stellen ändern!)
 - **Sammlungen:** `items` liegen als Array im Sammlung-Doc (klein gedacht, für Prüfungs-Bündel völlig ausreichend). Bei sehr großen Sammlungen wäre eine Subcollection sinnvoller. Verwaiste Item-Referenzen (gelöschtes Material) werden beim Auflösen als „nicht verfügbar" behandelt, nicht automatisch bereinigt.
-- GitHub↔Vercel Auto-Deploy ggf. noch nicht verbunden (s. §2)
+- **Rate-Limit der Auth-Mail-Function ist In-Memory** (pro warmer Serverless-Instanz, best-effort) – kein harter, instanzübergreifender Schutz. Für echten Missbrauchsschutz später ein persistenter Store/Provider-Limit.
 - Zwei E2E-Test-Accounts in Firebase Auth übrig (s. §2)
 - Der JS-Bundle ist ~820 kB (Firebase) – Vite warnt; Code-Splitting wäre eine mögliche Optimierung
 - HA-Doc bleibt versteckt liegen, wenn alle es „für sich gelöscht" haben, aber weder Autor noch Klassen-Admin der letzte Ausblendende war (bewusste Design-Entscheidung, harmlos)
@@ -550,11 +555,10 @@ npm run build        # Produktions-Build nach dist/ (inkl. PWA-Service-Worker)
 
 ### Deployment
 ```bash
-git add . && git commit -m "beschreibung" && git push   # → Auto-Deploy, WENN Git in Vercel verbunden
-# sonst manuell:
-vercel --prod
+git add . && git commit -m "beschreibung" && git push origin main   # → Auto-Deploy nach Production
 ```
-Hinweis aus der Praxis: Vercel-Builds schlugen vereinzelt mit „Unexpected error" **vor** dem Build-Step fehl (Infrastruktur-Aussetzer). Lösung: einfach erneut deployen, oder ein erfolgreiches Preview-Deploy mit `vercel promote <url>` zu Production machen.
+Auto-Deploy ist verbunden (s. §2): Push auf `main` → Production, Branch-Push → Preview. **Empfohlener Weg für nichttriviale/Backend-Änderungen:** Feature-Branch pushen → Preview testen → nach `main` mergen. Die **Serverless-Functions unter `api/`** werden von Vercel automatisch mitgebaut (brauchen die Server-Env-Vars, s. §12). Beachten: **`api/*` hängt nicht am Hostname-Routing** – der Endpoint ist auf jeder Domain erreichbar, während die React-App auf der Preview-`*.vercel.app` nur die Landing zeigt (Host ≠ `app.*`).
+Hinweis aus der Praxis: Vercel-Builds schlugen vereinzelt mit „Unexpected error" **vor** dem Build-Step fehl (Infrastruktur-Aussetzer). Lösung: einfach erneut deployen.
 
 ### Rules ändern
 `firestore.rules` / `storage.rules` im Repo bearbeiten → Inhalt in der Firebase Console einfügen → Veröffentlichen. (Es gibt kein automatisches Rules-Deployment.)
@@ -563,6 +567,7 @@ Hinweis aus der Praxis: Vercel-Builds schlugen vereinzelt mit „Unexpected erro
 
 ## 12. Environment Variables
 
+**Client (Browser, `VITE_`-Präfix → via `import.meta.env`):**
 ```
 VITE_FIREBASE_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN            = classsync-v2.firebaseapp.com
@@ -571,9 +576,19 @@ VITE_FIREBASE_STORAGE_BUCKET         = classsync-v2.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 ```
-- Lokal: `.env.local` (gitignored; enthält zusätzlich ein harmloses `VERCEL_OIDC_TOKEN`, das die Vercel-CLI dort pflegt)
-- Produktiv: als Vercel-Env-Vars in **allen drei** Environments (Production/Preview/Development) gesetzt
-- Ohne Keys zeigt die App den Setup-Hinweis (crasht nicht)
+**Server (nur `api/`, UNPRÄFIXIERT – dürfen NICHT ins Client-Bundle):**
+```
+RESEND_API_KEY                       ← Resend API-Key
+FIREBASE_PROJECT_ID  = classsync-v2  ← Admin-SDK
+FIREBASE_CLIENT_EMAIL                ← aus Service-Account-JSON (client_email)
+FIREBASE_PRIVATE_KEY                 ← aus JSON (private_key); mehrzeilig, Code macht .replace(/\n/g,"\n").
+                                       Im Vercel-Feld OHNE umschließende Anführungszeichen; in .env.local MIT "…".
+MAIL_FROM         (optional)         ← Default: ClassSync <noreply@mail.classsync.de>
+AUTH_CONTINUE_URL (optional)         ← Default: https://app.classsync.de
+```
+- Lokal: `.env.local` (gitignored; enthält zusätzlich ein harmloses `VERCEL_OIDC_TOKEN`). Die Server-Keys hier ermöglichen den lokalen Test via `scripts/test-resend.mjs`. `npm run dev` selbst nutzt sie nicht (DEV-Fallback auf Firebase-Mails).
+- Produktiv: **Client-Vars** in allen Environments; **Server-Vars** mindestens in Production + Preview.
+- Ohne Firebase-Client-Keys zeigt die App den Setup-Hinweis (crasht nicht). Fehlen die Server-Vars, antwortet der Mail-Endpoint mit `server-not-configured` (500).
 
 ---
 
