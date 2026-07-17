@@ -29,7 +29,8 @@
 |---|---|
 | **GitHub** | Repo `Jannihue10/classsync-v2` (öffentlich, Branch `main`) – https://github.com/Jannihue10/classsync-v2 – Account: `Jannihue10`, `gh` CLI installiert & eingeloggt |
 | **Vercel** | Projekt `jerk-s-projects/classsync-v2` (Hobby-Plan) – Account `jannikhuenniger-1620`, `vercel` CLI installiert & eingeloggt, Ordner per `vercel link` verknüpft (`.vercel/` lokal, gitignored) |
-| **Firebase** | Projekt **`classsync-v2`** – Auth (E-Mail/Passwort), Firestore, Storage (Bucket `classsync-v2.firebasestorage.app`). Keys in `.env.local` (nicht in Git) und als Vercel-Env-Vars (Production/Preview/Development) |
+| **Firebase** | Projekt **`classsync-v2`** – Auth (E-Mail/Passwort), Firestore, Storage (Bucket `classsync-v2.firebasestorage.app`). Client-Keys als `VITE_FIREBASE_*` in `.env.local` (nicht in Git) und als Vercel-Env-Vars (Production/Preview/Development). **Service-Account** (Admin-SDK, für die Auth-Mail-Function) als `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY`/`FIREBASE_PROJECT_ID` (unpräfixiert, nur Server) |
+| **Resend** | Transaktionale Auth-Mails (Verify + Passwort-Reset). Absender-Domain **`mail.classsync.de`** (DKIM/SPF/DMARC bei IONOS verifiziert). API-Key als Vercel-Env-Var `RESEND_API_KEY`. Versand über die Serverless-Function `api/auth-email.js` |
 | **Domains** | `classsync.de` + `app.classsync.de` → Vercel-Projekt `classsync-v2` (vom alten Vercel-Projekt entfernt). DNS/Nameserver: IONOS → Vercel |
 
 **Hinweise:**
@@ -444,6 +445,15 @@ Lokal läuft also immer die App; die Landingpage sieht man unter `localhost:5173
 - `emailVerified`-State wird in `onAuthStateChanged` aus `u?.emailVerified` gesetzt (lokales ID-Token, **kein** Request). `reload()` triggert `onAuthStateChanged` **nicht** und mutiert das User-Objekt in-place → `reloadVerification()` ruft `auth.currentUser.reload()` und spiegelt `emailVerified` in den State (erzwingt Re-Render + Gate-Weiterschaltung).
 - **Kein Auto-Versand in `register()`** – ausschließlich der `VerifyEmail`-Screen sendet (einmal beim Mount, `useRef`-Guard gegen StrictMode-Doppel-Mount). So gibt es garantiert **eine** Mail pro Screen-Besuch, kein Doppelversand. Resend-Button mit 60 s-Cooldown; `too-many-requests` deutsch abgefangen.
 - Kein Rules-/Firebase-Deploy nötig. Optional/später ließe sich die Sperre serverseitig über `request.auth.token.email_verified` in den Rules erzwingen – bewusst **nicht** umgesetzt (würde bestehende unverifizierte Sessions hart abschneiden; UI-Sperre reicht).
+
+### Auth-Mails über Resend (`api/auth-email.js`, `api/_emailTemplates.js`, `AuthContext`)
+- **Warum:** Firebase-Auth-Templates sind praktisch nicht gestaltbar (kein eigenes HTML/Branding, fixer Absender). Lösung: eigene, im ClassSync-Design gebrandete Mails über **Resend**, aber **Firebases Verifizierungs-/Reset-Mechanik bleibt** – wir tauschen nur den Versandweg.
+- **Kernidee:** Die Serverless-Function `api/auth-email.js` (Vercel, Firebase-**Admin**-SDK) erzeugt den Firebase-Action-Link (`generateEmailVerificationLink` / `generatePasswordResetLink`) und verschickt ihn via Resend. Beim Klick landet der Nutzer weiter auf Firebases Action-Handler → `emailVerified` kippt bzw. Passwort wird gesetzt. **Deshalb bleiben `reloadVerification()` und der `emailVerified`-Gate in `App.jsx` unverändert.**
+- **Endpoint** (`type: "verify" | "reset"`): *verify* erfordert das `idToken` des eingeloggten Users (`verifyIdToken`) → Mail geht nur an die aus dem Token gelesene Adresse (Missbrauchsschutz); *reset* ist unauthentifiziert und antwortet **immer** generisch `200` (keine User-Enumeration, `user-not-found` geschluckt). Best-effort In-Memory-Rate-Limit. Admin-Init aus Env-Vars mit `getApps()`-Guard.
+- **Frontend (`AuthContext`):** `sendVerification`/`resetPassword` rufen in **Prod** den Endpoint (`postAuthEmail` → `/api/auth-email`), in **DEV** (`import.meta.env.DEV`) weiter die Firebase-Standardmail als Fallback – so läuft `npm run dev` ohne `vercel dev`. Endpoint-Fehlercodes werden auf `authErrorText()` gemappt.
+- **Env-Vars (Vercel, unpräfixiert):** `RESEND_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (mehrzeilig – im Code `.replace(/\\n/g,"\n")`; im Vercel-Feld **ohne** umschließende Anführungszeichen!). Optional `MAIL_FROM`, `AUTH_CONTINUE_URL`.
+- **Lokaler Test ohne Deploy:** `node scripts/test-resend.mjs <email> [verify|reset]` – liest `.env.local`, prüft Admin-Credentials, erzeugt Link, sendet über Resend (dieselbe Kette wie der Endpoint).
+- ⚠️ **`api/*` nicht vom SPA-Rewrite schlucken lassen:** `vercel.json`-Rewrite nutzt Negative-Lookahead `"/((?!api/).*)"`; `vite.config.js` hat `workbox.navigateFallbackDenylist: [/^\/api/]`, damit der Service-Worker die API nicht abfängt.
 
 ### Kurswahl nach Beitritt
 `joinByCode()` setzt `sessionStorage["classsync_showKurswahl"]="1"`; `AppShell` liest das Flag einmalig beim Mount und öffnet das Modal.

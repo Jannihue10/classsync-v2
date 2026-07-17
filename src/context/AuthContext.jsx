@@ -12,6 +12,43 @@ import { auth, db } from "../lib/firebase";
 
 const AuthContext = createContext(null);
 
+// Endpoint-Fehlercodes auf die vorhandenen Firebase-Codes mappen, damit authErrorText()
+// (unten) einheitliche deutsche Texte liefert.
+const ENDPOINT_ERR_MAP = {
+  "too-many-requests": "auth/too-many-requests",
+  "invalid-email": "auth/invalid-email",
+  "no-email-on-account": "auth/invalid-email",
+};
+
+// POST an die serverlose Auth-Mail-Function (Prod). Wirft bei Nicht-2xx einen Fehler
+// mit .code, den authErrorText() übersetzen kann; Netzwerkfehler -> auth/network-request-failed.
+async function postAuthEmail(type, payload) {
+  let res;
+  try {
+    res = await fetch("/api/auth-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, ...payload }),
+    });
+  } catch {
+    const err = new Error("network");
+    err.code = "auth/network-request-failed";
+    throw err;
+  }
+  if (!res.ok) {
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      /* ignore */
+    }
+    const err = new Error(data.error || `http-${res.status}`);
+    err.code = ENDPOINT_ERR_MAP[data.error] || `endpoint/${data.error || res.status}`;
+    throw err;
+  }
+  return res.json().catch(() => ({}));
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null); // Firestore users/{uid}
@@ -78,13 +115,20 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
-  function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email.trim());
+  // Passwort-Reset-Mail. Prod: eigener Endpoint -> Resend. DEV (npm run dev, kein
+  // /api): Firebase-Standardmail als Fallback, damit lokales Testen ohne `vercel dev` geht.
+  async function resetPassword(email) {
+    if (import.meta.env.DEV) return sendPasswordResetEmail(auth, email.trim());
+    await postAuthEmail("reset", { email: email.trim() });
   }
 
-  // Verifizierungs-E-Mail senden (manueller Resend im VerifyEmail-Screen)
-  function sendVerification() {
-    return sendEmailVerification(auth.currentUser);
+  // Verifizierungs-E-Mail senden (Auto-Versand + manueller Resend im VerifyEmail-Screen).
+  // Prod: eigener Endpoint -> Resend (Adresse kommt serverseitig aus dem verifizierten
+  // idToken). DEV: Firebase-Standardmail als Fallback.
+  async function sendVerification() {
+    if (import.meta.env.DEV) return sendEmailVerification(auth.currentUser);
+    const idToken = await auth.currentUser.getIdToken();
+    await postAuthEmail("verify", { idToken });
   }
 
   // Aktuellen Auth-Status neu laden (on-demand, kein Polling) und emailVerified spiegeln.
