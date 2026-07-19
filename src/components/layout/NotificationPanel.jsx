@@ -4,7 +4,7 @@ import { useNotifications } from "../../context/NotificationContext";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_COLORS } from "../../lib/faecher";
 import { relativeTime } from "../../lib/dates";
-import { radius } from "../../styles/theme";
+import { radius, safeExtra, safePad, vwScaled } from "../../styles/theme";
 import { Btn, CloseButton, Empty, Tag } from "../ui/UI";
 
 // Slide-over von rechts: neue Materialien gruppiert nach Kurs
@@ -20,14 +20,19 @@ export default function NotificationPanel({ onClose }) {
     >
       <div
         style={{
-          position: "absolute", top: 0, right: 0, bottom: 0, width: "min(380px, 100vw)",
+          position: "absolute", top: 0, right: 0, bottom: 0,
+          width: `min(380px, ${vwScaled(100)})`,
           background: t.surface, borderLeft: `1px solid ${t.border}`, boxShadow: t.shadowLg,
           display: "flex", flexDirection: "column", animation: "cs-slidein-right .2s ease",
+          // Notch im Querformat (kleinstes inneres Padding ist 14px)
+          paddingRight: safeExtra("right", 14),
         }}
       >
         <div
           style={{
             padding: "16px 18px", borderBottom: `1px solid ${t.border}`,
+            // Statusleiste / Notch: absorbiert, nicht addiert
+            paddingTop: safePad("top", 16),
             display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
           }}
         >
@@ -48,7 +53,14 @@ export default function NotificationPanel({ onClose }) {
           <CloseButton onClick={onClose} style={{ width: 28, height: 28 }} />
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
+        <div
+          style={{
+            flex: 1, overflowY: "auto", padding: 14,
+            // Home-Indikator: nur wenn unten keine Fusszeile folgt, die ihn
+            // schon abfaengt – sonst entstuende dort toter Raum.
+            paddingBottom: unreadCount > 0 ? 14 : safePad("bottom", 14),
+          }}
+        >
           {grouped.length === 0 ? (
             <Empty icon={CheckCircle2} text="Alles gelesen" sub="Neue Materialien deiner Kurse tauchen hier auf." />
           ) : (
@@ -85,7 +97,7 @@ export default function NotificationPanel({ onClose }) {
         </div>
 
         {unreadCount > 0 && (
-          <div style={{ padding: 14, borderTop: `1px solid ${t.border}` }}>
+          <div style={{ padding: 14, paddingBottom: safePad("bottom", 14), borderTop: `1px solid ${t.border}` }}>
             <Btn full variant="soft" onClick={markAllRead}>
               <Check size={15} strokeWidth={2} /> Alle gelesen
             </Btn>

@@ -78,6 +78,7 @@ export const AUTO_TABLET_SCALE = UI_SCALES.normal;
 // vh/vw loesen innerhalb des gezoomten #root gegen den UNskalierten Viewport
 // auf und werden danach mitskaliert -> ohne Gegenrechnung 15 % zu gross.
 export const vhScaled = (n) => `calc(${n}vh / var(--cs-scale, 1))`;
+export const vwScaled = (n) => `calc(${n}vw / var(--cs-scale, 1))`;
 
 // Seitliches/oberes Padding der Seiten-Container (UebersichtPage, KursPage,
 // BibliothekPage, KalenderPage). AppShell rechnet damit die Safe-Area-Differenz

@@ -1,7 +1,7 @@
 import { isValidElement, useEffect } from "react";
 import { GraduationCap } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { radius, vhScaled } from "../../styles/theme";
+import { radius, safePad, vhScaled } from "../../styles/theme";
 
 // ---------- Logo ----------
 // Flaches Monogramm-Mark statt Emoji/Verlauf
@@ -176,7 +176,13 @@ export function Modal({ width = 480, onClose, children, noPad }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        // Ein hohes Modal (maxHeight 92vh) reicht sonst unter Notch bzw.
+        // Home-Indikator. Absorbiert, nicht addiert -> Desktop bleibt bei 16.
         padding: 16,
+        paddingTop: safePad("top", 16),
+        paddingBottom: safePad("bottom", 16),
+        paddingLeft: safePad("left", 16),
+        paddingRight: safePad("right", 16),
         animation: "cs-fadein .15s ease",
       }}
     >
