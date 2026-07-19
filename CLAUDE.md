@@ -9,6 +9,7 @@ Lernzettel, Aufgabenblätter), organisiert nach Kursen und Stundenplan.
 - Styling: **nur Inline-Styles + Design-Tokens** aus `src/styles/theme.js` (keine CSS-Library)
 - `npm run dev` (Port 5173, Config in `.claude/launch.json`) · `npm run build`
 - Deploy: `git push origin main` → Vercel (falls Git-Integration aktiv), sonst `vercel --prod`
+- **Preview testen:** Branch pushen → `https://classsync-v2-git-<branch>-jerk-s-projects.vercel.app/?app=1`. ⚠️ Ohne `?app=1` zeigt die Preview die **Landingpage** (Host ≠ `app.*`) und deren Buttons führen in die **Produktion** — man testet dann unbemerkt die Live-Version.
 
 ## Infrastruktur
 - **Firebase-Projekt: `classsync-v2`** (Keys in `.env.local`, nicht in Git)
@@ -29,7 +30,9 @@ Lernzettel, Aufgabenblätter), organisiert nach Kursen und Stundenplan.
 - **Keine Emoji in der UI.** Icons ausschließlich aus `lucide-react` (`strokeWidth 1.8`).
 - Kurse/Fächer als **farbige Monogramme** (`components/ui/CourseAvatar.jsx`), nicht als Icons.
 - Flache Hairline-Schatten, Radius 7/10/14, Fettschrift sparsam (700+ nur für echte Überschriften).
-- iOS-PWA: Safe-Area-Insets (`env(safe-area-inset-*)`) an obersten Flächen beachten.
+- **Größen bleiben feste px-Zahlen.** Die globale Vergrößerung läuft über `#root { zoom: var(--cs-scale) }` (Tablet automatisch 1.15x, im Profil einstellbar) — nicht über rem oder Komponenten-Props.
+- ⚠️ **`vh`/`vw` nie roh verwenden** — sie lösen im gezoomten `#root` gegen den unskalierten Viewport auf und werden dann mitskaliert. Stattdessen `vhScaled()`/`vwScaled()` aus `theme.js`.
+- ⚠️ **Safe-Area: absorbieren, nicht addieren.** Nicht `calc(16px + env(...))`, sondern `safePad(side, 16)` = `max(16px, inset)` — sonst ist der Abstand auf jedem Gerät um einen anderen Betrag zu groß. Helfer: `safeInset`/`safePad`/`safeExtra` in `theme.js`. Gilt für **jede** neue Vollbild-Fläche (Overlays, Slide-overs, Modals). Details: handoff.md §9 „UI-Skalierung & Safe-Area".
 
 ## Arbeitsweise
 - Vollständig deutsche UI. Nach Änderungen: `npm run build` grün halten + im Browser prüfen.

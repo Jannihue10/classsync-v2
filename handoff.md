@@ -1,5 +1,5 @@
 # ClassSync – Vollständiges Handoff-Dokument (v2 / „Fable"-Rebuild)
-*Zuletzt aktualisiert: 17. Juli 2026*
+*Zuletzt aktualisiert: 19. Juli 2026*
 
 > Dieses Projekt ist ein **kompletter Neubau** der ursprünglichen ClassSync-App
 > (alter Prototyp: `C:\Users\janni\classsync`). Gleicher Tech-Stack, neues
@@ -144,7 +144,7 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 - **„Deine Klassen"-Karte:** alle eigenen Klassen (`MembershipsContext.myClasses`), aktive markiert, „Wechseln" je Klasse, „Klasse hinzufügen" (`AddKlasseModal`); darunter **„Offene Einladungen"** (Migration, `openMigrations`) mit „Beitreten".
 - **Aktive Klasse:** Klassenname + Zugangscode mit **Kopieren-Button**, „Kurse verwalten", „Klasse verlassen" (letzter Admin gesperrt) und für Admins **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`).
 - **Mitgliederliste live** (Query `users where klasseIds array-contains <aktive Klasse>`), Admin-Badge 👑, Promote/Demote-Buttons für Klassen-Admins, Letzter-Admin-Schutz; **Entfernen/Sperren** je Mitglied + **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen)
-- Light/Dark-Toggle, Abmelden, ⚠️ **Klassen-Gefahrenzone** (Klasse löschen, nur Admin – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen) und ⚠️ **Konto-Gefahrenzone** („Account löschen", für alle, `DeleteAccountModal`, s. §9)
+- Light/Dark-Toggle, **UI-Größe** (Automatisch/Klein/Normal/Groß, s. §9), Abmelden, ⚠️ **Klassen-Gefahrenzone** (Klasse löschen, nur Admin – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen) und ⚠️ **Konto-Gefahrenzone** („Account löschen", für alle, `DeleteAccountModal`, s. §9)
 
 ### Landingpage (`classsync.de`)
 - `Landing.jsx`: Sticky Nav (Blur), Hero mit Gradient-Headline, Features-Grid (6), 3-Schritte-Sektion, CTA, Footer
@@ -156,6 +156,7 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 
 ### Theming & Designsprache
 - Kompletter **Light/Dark Mode** mit Design-Tokens in `src/styles/theme.js`; initial via `prefers-color-scheme`, gespeichert in `localStorage` (`classsync_theme`)
+- **Globale UI-Skalierung (Juli 2026):** Auf Tablets war die UI zu klein (ein iPad ist weder `isMobile` noch `isWide` und bekam Desktop-Größen). Die ganze App skaliert jetzt über **CSS `zoom` auf `#root`**, gesteuert per `--cs-scale` aus dem `ThemeContext`. Tablet-Breite → automatisch **1.15x**, Desktop/Handy → 1.0. Im Profil zusätzlich wählbar (**Automatisch / Klein / Normal / Groß**, `classsync_uiscale` in `localStorage`). „Klein" = 1.0 = exakt das Aussehen vor der Änderung und damit der Notausgang. Details + Fallstricke in §9 „UI-Skalierung & Safe-Area"
 - Styling ausschließlich **Inline Styles + Tokens**, keine CSS-Library; globale Resets + Keyframes (`cs-spin`, `cs-fadein`, `cs-slideup`, `cs-slidein-left/right`) in `index.html`
 - **Designsprache (bewusster „De-AI"-Feinschliff, Juli 2026):** Slate-Neutraltöne mit sparsamem Akzent (Light `#3b6ea5`, Dark `#6d9bcf`) statt des früheren Indigo `#6366f1`; **keine Farbverläufe**; flache Hairline-Schatten; Radius 7/10/14. **Keine Emoji in der UI** – Icons kommen aus `lucide-react` (Linien-Icons, `strokeWidth 1.8`), Kurse als `CourseAvatar`-Monogramme, Logo als flaches `LogoMark` (GraduationCap auf Akzent-Quadrat). Diese Prinzipien bei neuen Features beibehalten!
 
@@ -184,7 +185,7 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 
 ```
 ClassSync Fable/
-├── index.html                      ← PWA-Meta, Inter, CSS-Reset + Keyframes
+├── index.html                      ← PWA-Meta, Inter, CSS-Reset + Keyframes, #root { zoom: var(--cs-scale) }
 ├── vite.config.js                  ← react() + VitePWA (Manifest, workbox.navigateFallbackDenylist [/^\/api/])
 ├── vercel.json                     ← SPA-Rewrite: alle Pfade → /index.html, /api/* per Negative-Lookahead ausgenommen
 ├── package.json
@@ -198,7 +199,7 @@ ClassSync Fable/
 ├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy: verify|reset|changeEmail)
 ├── public/                         ← favicon.svg, icon-16/32/180/192/512.png, icons.svg
 └── src/
-    ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal
+    ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal, **?app=1 = App auf Preview-Domains erzwingen** (s. §9)
     ├── App.jsx                     ← Auth-Gate: … → Onboarding (klasseIds leer) → MembershipsProvider → KlasseProvider(key=activeKlasseId) → AppShell
     ├── lib/
     │   ├── firebase.js             ← Init aus import.meta.env; exportiert db, auth, storage, firebaseConfigured
@@ -210,14 +211,14 @@ ClassSync Fable/
     │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
     │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial
-    │   └── useMediaQuery.js        ← useIsMobile (<768px), useIsWide (≥1200px)
+    │   └── useMediaQuery.js        ← useIsMobile (<768px), **useIsTablet (768–1199px)**, useIsWide (≥1200px); nutzt jetzt die MOBILE_/WIDE_BREAKPOINT-Konstanten aus theme.js
     ├── context/
     │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; **changeEmail** (Reauth + Resend/DEV-Fallback) + **users.email-Sync** nach Wechsel; authErrorText
     │   ├── MembershipsContext.jsx  ← **NEU**: beobachtet ALLE eigenen Klassen (klasseIds). Liefert myClasses (Wechsler/Profil), openMigrations/pendingMigrations (Einladungen), und wirft bei Ban/Löschung klassenübergreifend selbst raus (arrayRemove aus klasseIds + activeKlasseId neu wählen)
-    │   ├── ThemeContext.jsx        ← mode, toggle, t (Token-Objekt)
+    │   ├── ThemeContext.jsx        ← mode, toggle, t (Token-Objekt) + **scale/scalePref/setScalePref** (UI-Skalierung, setzt `--cs-scale` am documentElement)
     │   ├── KlasseContext.jsx       ← Listener auf die **aktive** Klasse (klasse=null bei gelöscht/gesperrt; Eviction macht jetzt MembershipsContext), Kurse-Listener; meineKurse, isKlassenAdmin, canManageKurs
     │   └── NotificationContext.jsx ← Material-Listener pro eigenem Kurs der aktiven Klasse, lastSeen, Dedupe per ID, grouped, markAllRead
-    ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints
+    ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints, PAGE_PAD, UI_SCALES + **vhScaled/vwScaled** (Viewport-Einheiten gegen den zoom) und **safeInset/safePad/safeExtra** (Safe-Area, s. §9)
     ├── components/
     │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, CloseButton, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card, LogoMark
     │   ├── ui/CourseAvatar.jsx     ← farbiges Kurs-Monogramm (ersetzt Emoji-Icons)
@@ -430,10 +431,42 @@ Vollständig in [`firestore.rules`](firestore.rules) und [`storage.rules`](stora
 ### Hostname-Routing (`main.jsx`)
 ```js
 const isLocal = host === "localhost" || host === "127.0.0.1";
-const isApp = (host.startsWith("app.") || isLocal) && params.get("landing") !== "1";
+const isProdDomain = /(^|\.)classsync\.de$/.test(host);
+// ?app=1 wird pro Origin in localStorage gemerkt (classsync_forceApp)
+const isApp = (host.startsWith("app.") || isLocal || forceApp) && params.get("landing") !== "1";
 // isApp → <App/> (mit BrowserRouter), sonst <Landing/>
 ```
 Lokal läuft also immer die App; die Landingpage sieht man unter `localhost:5173/?landing=1`.
+
+⚠️ **Preview-Deployments waren nicht testbar (behoben Juli 2026).** Eine Vercel-Preview läuft auf `classsync-v2-….vercel.app` – das ist weder `app.*` noch localhost, also zeigte sie die **Landingpage**, deren Buttons absolut auf `app.classsync.de` zeigen. Wer eine Preview testen wollte, landete unbemerkt in der **Produktion** und testete die alte Version. Zwei Gegenmaßnahmen:
+- **`?app=1`** erzwingt die App und wird in `localStorage` gemerkt (`classsync_forceApp`), damit der Schalter Routenwechsel **und** den Start aus dem Homescreen (PWA) überlebt. `?landing=1` schaltet zurück und löscht das Flag. Auf `classsync.de` selbst ist der Override **wirkungslos**, damit die Marketing-Domain nicht dauerhaft in die App kippen kann.
+- **`Landing.jsx`** zeigt außerhalb der echten Domain auf die **eigene Origin** (`APP_URL`/`REGISTER_URL`) statt auf die Produktion.
+
+**Preview testen:** `https://classsync-v2-git-<branch>-jerk-s-projects.vercel.app/?app=1` (der `git-<branch>`-Alias bleibt über alle Commits des Branches gleich).
+
+### UI-Skalierung & Safe-Area (`theme.js`, `ThemeContext`, `index.html`)
+**Warum `zoom` und nicht rem/Tokens?** Die App hat **keine** Größen-Tokens – alle Größen sind hartkodierte Zahlen-Literale in Inline-Styles (~205× `fontSize`, ~177× `gap`, ~159× `padding`, ~122× Icon-`size`, zusammen 700+ Stellen; kein einziges `rem`). Eine rem-Migration hätte alle 700 angefasst. Stattdessen skaliert **eine** Zeile alles proportional:
+```css
+#root { zoom: var(--cs-scale, 1); }   /* index.html */
+```
+`zoom` statt `transform: scale`, weil `zoom` **echtes Layout** skaliert – Umbrüche und `minmax()`-Grid-Spalten rechnen korrekt neu, und `position: fixed` bleibt intakt (bei `transform: scale` nicht!).
+
+⚠️ **Viewport-Einheiten müssen gegengerechnet werden.** `vh`/`vw` lösen innerhalb des gezoomten `#root` gegen den **unskalierten** Viewport auf und werden danach mitskaliert → 15 % zu groß. Deshalb `vhScaled(n)`/`vwScaled(n)` aus `theme.js` statt roher `vh`/`vw`. Ohne das wäre die App-Shell auf dem iPad 1357px statt 1180px hoch (Buttons unten abgeschnitten) und das Benachrichtigungs-Panel bei Einstellung „Groß" auf einem 390px-Schirm 494px breit (statt 390). **Bei neuen `vh`/`vw`-Werten immer die Helfer nutzen.**
+
+⚠️ **Safe-Area-Grundsatz: absorbieren, nicht addieren.** Die Insets lagen ursprünglich *zusätzlich* auf Padding, das schon da war (`calc(10px + env(...))` bzw. Inset am Wrapper + Padding am Kind). Weil die Gerätewerte stark schwanken (iPhone-Notch ~59px, iPad ~24px, Desktop 0), fiel die Summe auf **jedem Gerät um einen anderen Betrag** zu groß aus. Richtig ist „mindestens Design-Padding, **mindestens** Inset" – also `max()`:
+```js
+safeInset(side)          // env(...) / var(--cs-scale)  – Inset darf NICHT mitskalieren:
+                         //   wo die Notch physisch sitzt, ändert sich nicht mit der Schriftgröße
+safePad(side, base)      // max(base, inset)      – Flächen mit eigenem Padding
+safeExtra(side, covered) // max(0, inset - covered) – Wrapper, deren Kind schon paddet
+```
+Gemessen (physische px): iPad-Kopf 42 → 24, iPad-Hauptbereich 44 → 24, iPhone-Header 69 → 59, iPhone-Fußzeile 44 → 34. Desktop unverändert (Inset 0 → `max()` fällt auf das bisherige Padding zurück).
+
+**Betroffene Flächen** (bei neuen Vollbild-Flächen mitdenken!): Sidebar-Kopf/-Fuß, Mobile-Header, `<main>`, **Benachrichtigungs-Panel** (`top:0`/`bottom:0`-Slide-over) und **jedes Modal** (Overlay-Padding, weil der Karton `92vh` hoch werden darf). Zwei Feinheiten: Die Sidebar-Linke rechnet gegen **12px** (kleinstes inneres Padding von Nav/Fußzeile), sonst ragen diese Zeilen im Querformat in die Notch. Und der schwebende Theme-Umschalter im `AuthLayout` bleibt bewusst **additiv** – dort sind die 14px gewollter Abstand *zur* sicheren Kante, kein Flächen-Padding.
+
+**`PAGE_PAD`** (=20) liegt in `theme.js` und wird von den fünf Seiten-Containern **tatsächlich benutzt**, weil `AppShell` die Safe-Area-Differenz dagegen rechnet (`safeExtra("top", PAGE_PAD)`). Als Literal in fünf Dateien wäre die Kopplung still gebrochen, sobald jemand das Seiten-Padding ändert.
+
+⚠️ **`matchMedia` misst den echten Viewport, nicht die gezoomte Fläche.** Auf einem iPad im Hochformat (820px) bleibt `isMobile` also korrekt `false`, aber die nutzbare Layout-Breite sinkt auf 820/1.15 ≈ 713px. Bei 1.15x unkritisch – das ist der Grund, warum die Automatik **nicht** höher geht: bei 1.3x im Hochformat fällt das Material-Grid (`minmax(230px, 1fr)`) auf eine Spalte zurück. „Groß" ist deshalb bewusst eine Nutzer-Entscheidung und kein Default.
 
 ### Auth-Gate-Kette (`App.jsx`)
 `!firebaseConfigured` → SetupHinweis · `loading` → Spinner · `!user` → Login/Register (`?register=true` beachtet) · **`!emailVerified` → VerifyEmail (harte Sperre, vor dem Profil-Check → greift für neue wie bestehende Nutzer)** · `!profile` → Spinner · **`klasseIds` leer → Onboarding** · sonst `MembershipsProvider` → `KlasseProvider key={activeKlasseId}` → `KlasseGate` → `NotificationProvider` → `AppShell`. `activeKlasseId` = `profile.activeKlasseId`, falls in `klasseIds`, sonst `klasseIds[0]` (Fallback). `KlasseGate` zeigt bei `klasse == null` nur einen Spinner (transient bei gelöschter/gesperrter aktiver Klasse – der `MembershipsProvider` entfernt sie dann aus `klasseIds`, danach greift eine andere aktive Klasse oder das Onboarding).
@@ -578,6 +611,7 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 
 ### Responsive-Verhalten
 - `< 768px`: Sidebar als Overlay-Drawer (Hamburger in mobiler TopBar), schließt bei Navigation
+- `768–1199px` (`useIsTablet`): Layout wie Desktop, aber die **UI-Skalierung** greift automatisch mit 1.15x (s. „UI-Skalierung & Safe-Area"). Der Hook steuert **nur** die Skalierung, nicht das Layout
 - `≥ 1200px` (`useIsWide`): KursPage zweispaltig – links Materialien/Chat-Tabs, rechts HA + Prüfungen; Tab-State fällt beim Umschalten auf breit automatisch auf „material" zurück (Edge-Case behandelt in `KursPage.jsx`)
 
 ---
@@ -588,6 +622,7 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 - **Feld-Migration:** neu registrierte/ eingeloggte User sind sofort auf `klasseIds`; noch nie eingeloggte Alt-User erscheinen erst nach dem **einmaligen Backfill** (`scripts/backfill-klasseids.mjs`) in fremden Mitgliederlisten (die Lazy-Migration greift erst bei deren nächstem Login).
 - **Account-Löschung = „Mitgliedschaft + Profil"** (geteilte Inhalte bleiben mit Nickname erhalten). Der **DSGVO-Voll-Wipe** (alle Autor-Inhalte + Chat-Hard-Delete + Fremd-Referenzen) ist noch **offen** – kompletter Umbauplan inkl. uid-Fußabdruck und `api/delete-account.js`-Architektur in §9 „DSGVO-Voll-Wipe (geplant)".
 - **E-Mail-Wechsel** nur auf **freie** Adressen (Firebase-Vorgabe); in DEV verweigert Firebase belegte Adressen still (kein Fehler/keine Mail).
+- **UI-Skalierung ist `zoom`-basiert**, nicht rem: Sie skaliert alles proportional, macht das Layout aber nicht *anders* (keine anderen Umbrüche, keine größeren Touch-Ziele relativ zum Rest). Die **Landingpage skaliert mit**, weil sie sich `#root` mit der App teilt – auf dem Tablet ist also auch `classsync.de` 15 % größer. Bei „Groß" (1.3x) sinkt die nutzbare Layout-Breite spürbar (s. §9, `matchMedia`-Hinweis). Ein echter Token-/rem-Umbau bleibt die saubere, aber teure Alternative (700+ Literale)
 - **Keine Push-Notifications** – nur In-App (FCM wäre der nächste Schritt, braucht Blaze-Plan)
 - **Keine Offline-Unterstützung**
 - **Max. Dateigröße 10 MB** (`MAX_MB` in `UploadModal.jsx` + Storage-Rules – beide Stellen ändern!)
@@ -614,7 +649,7 @@ npm run build        # Produktions-Build nach dist/ (inkl. PWA-Service-Worker)
 ```bash
 git add . && git commit -m "beschreibung" && git push origin main   # → Auto-Deploy nach Production
 ```
-Auto-Deploy ist verbunden (s. §2): Push auf `main` → Production, Branch-Push → Preview. **Empfohlener Weg für nichttriviale/Backend-Änderungen:** Feature-Branch pushen → Preview testen → nach `main` mergen. Die **Serverless-Functions unter `api/`** werden von Vercel automatisch mitgebaut (brauchen die Server-Env-Vars, s. §12). Beachten: **`api/*` hängt nicht am Hostname-Routing** – der Endpoint ist auf jeder Domain erreichbar, während die React-App auf der Preview-`*.vercel.app` nur die Landing zeigt (Host ≠ `app.*`).
+Auto-Deploy ist verbunden (s. §2): Push auf `main` → Production, Branch-Push → Preview. **Empfohlener Weg für nichttriviale/Backend-Änderungen:** Feature-Branch pushen → Preview testen → nach `main` mergen. Die **Serverless-Functions unter `api/`** werden von Vercel automatisch mitgebaut (brauchen die Server-Env-Vars, s. §12). Beachten: **`api/*` hängt nicht am Hostname-Routing** – der Endpoint ist auf jeder Domain erreichbar. Die React-App zeigt auf der Preview-`*.vercel.app` weiterhin die Landing (Host ≠ `app.*`); für die **App** auf der Preview `?app=1` anhängen, s. §9 „Hostname-Routing".
 Hinweis aus der Praxis: Vercel-Builds schlugen vereinzelt mit „Unexpected error" **vor** dem Build-Step fehl (Infrastruktur-Aussetzer). Lösung: einfach erneut deployen.
 
 ### Rules ändern
@@ -675,7 +710,7 @@ Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b 
 - `<Btn variant="primary|ghost|soft|danger|dangerGhost|success" full small>` – Button
 - `<IconButton title active badge>` – 36×36-Icon-Button mit optionalem Zähler-Badge
 - `<Input label error textarea>` – Formular-Input (auch Textarea-Modus)
-- `<Modal width onClose noPad>` – Overlay-Modal (Escape + Backdrop-Klick schließen; `onClose=undefined` sperrt Schließen während busy)
+- `<Modal width onClose noPad>` – Overlay-Modal (Escape + Backdrop-Klick schließen; `onClose=undefined` sperrt Schließen während busy). Overlay-Padding nutzt `safePad` und die Höhe `vhScaled(92)` – s. §9 „UI-Skalierung & Safe-Area"
 - `<ModalHeader title subtitle onClose>`
 - `<Pill label color>` / `<Tag label bg fg>` – farbige Badges
 - `<Divider>` / `<SectionTitle action>` / `<Spinner size center>` / `<Card hover onClick>`
@@ -685,4 +720,4 @@ Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b 
 - `<CourseAvatar name farbe size radius>` (eigene Datei) – Kurs-Monogramm
 - `<DateiIcon typ size color>` (eigene Datei) – PDF/Bild/Notiz-Icon
 
-Alle Komponenten holen sich die Design-Tokens über `useTheme()` → `t`. Lucide-Icons: `size` 13–19 je nach Kontext, `strokeWidth 1.8` (Buttons/Nav) bzw. 2+ (Checks).
+Alle Komponenten holen sich die Design-Tokens über `useTheme()` → `t`. Lucide-Icons: `size` 13–19 je nach Kontext, `strokeWidth 1.8` (Buttons/Nav) bzw. 2+ (Checks). Größen bleiben **feste px-Zahlen** – die globale Vergrößerung läuft über den `zoom` am `#root`, nicht über die Komponenten (s. §9).
