@@ -7,7 +7,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { formatUhrzeit } from "../../lib/dates";
 import { useKursCollection, tsMillis } from "../../lib/useKursCollection";
-import { radius } from "../../styles/theme";
+import { radius, vhScaled } from "../../styles/theme";
 import { Btn, Card, Empty, Spinner } from "../ui/UI";
 import ConfirmDialog from "../modals/ConfirmDialog";
 import { canDeleteMessage, canEditMessage, deleteMessage, editMessage } from "./chatActions";
@@ -97,7 +97,7 @@ export default function ChatPanel({ klasseId, kurs }) {
   }
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", height: "min(64vh, 620px)" }}>
+    <Card style={{ display: "flex", flexDirection: "column", height: `min(${vhScaled(64)}, 620px)` }}>
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         {loading ? (
           <Spinner center />

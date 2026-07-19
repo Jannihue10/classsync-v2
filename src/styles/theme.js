@@ -69,3 +69,12 @@ export const themes = {
 };
 
 export const radius = { sm: 7, md: 10, lg: 14, xl: 18, full: 999 };
+
+// Globale UI-Skalierung (siehe #root { zoom } in index.html).
+// "auto" waehlt anhand der Geraetebreite: Tablet -> normal, sonst klein.
+export const UI_SCALES = { klein: 1, normal: 1.15, gross: 1.3 };
+export const AUTO_TABLET_SCALE = UI_SCALES.normal;
+
+// vh/vw loesen innerhalb des gezoomten #root gegen den UNskalierten Viewport
+// auf und werden danach mitskaliert -> ohne Gegenrechnung 15 % zu gross.
+export const vhScaled = (n) => `calc(${n}vh / var(--cs-scale, 1))`;

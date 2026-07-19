@@ -4,7 +4,7 @@ import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { dateToISO, getKW, mondayOf, parseDatum } from "../lib/dates";
-import { radius } from "../styles/theme";
+import { radius, vhScaled } from "../styles/theme";
 import WeekGrid from "../components/kalender/WeekGrid";
 import PageHeader from "../components/layout/PageHeader";
 
@@ -88,7 +88,7 @@ export default function KalenderPage() {
           <div
             style={{
               background: t.surface, border: `1px solid ${t.border}`,
-              borderRadius: 14, overflow: "auto", maxHeight: "calc(100vh - 220px)",
+              borderRadius: 14, overflow: "auto", maxHeight: `calc(${vhScaled(100)} - 220px)`,
             }}
           >
             <WeekGrid kurse={meineKurse} dates={weekDates} pruefungenByISO={pruefungenByISO} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRightLeft, Check, Copy, Crown, GraduationCap, LogOut, Mail, Moon, Plus, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
+import { ArrowRightLeft, Check, Copy, Crown, GraduationCap, LogOut, Mail, Moon, Plus, Scaling, Settings2, Sun, Trash2, TriangleAlert, User, UserMinus } from "lucide-react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -15,8 +15,16 @@ import DeleteAccountModal from "../components/modals/DeleteAccountModal";
 import MigrateKlasseModal from "../components/modals/MigrateKlasseModal";
 import PageHeader from "../components/layout/PageHeader";
 
+// Reihenfolge der UI-Größen-Auswahl (Werte in styles/theme.js: UI_SCALES)
+const UI_SCALE_OPTIONS = [
+  { key: "auto", label: "Automatisch" },
+  { key: "klein", label: "Klein" },
+  { key: "normal", label: "Normal" },
+  { key: "gross", label: "Groß" },
+];
+
 export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
-  const { t, toggle, mode } = useTheme();
+  const { t, toggle, mode, scalePref, setScalePref } = useTheme();
   const { profile, logout, updateProfile } = useAuth();
   const { klasse, kurse, isKlassenAdmin } = useKlasse();
   const { myClasses, openMigrations } = useMemberships();
@@ -104,6 +112,25 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
               <Mail size={14} strokeWidth={1.8} /> E-Mail ändern
             </Btn>
           </div>
+          <Divider />
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <span style={{ fontSize: 12.5, color: t.textMuted, display: "flex", alignItems: "center", gap: 7 }}>
+              <Scaling size={14} strokeWidth={1.8} /> UI-Größe
+            </span>
+            {UI_SCALE_OPTIONS.map((opt) => (
+              <Btn
+                key={opt.key}
+                small
+                variant={scalePref === opt.key ? "primary" : "soft"}
+                onClick={() => setScalePref(opt.key)}
+              >
+                {opt.label}
+              </Btn>
+            ))}
+          </div>
+          <p style={{ margin: "0 0 4px", fontSize: 12, color: t.textFaint }}>
+            „Automatisch" vergrößert die Oberfläche nur auf Tablets.
+          </p>
           <Divider />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Btn small variant="soft" onClick={toggle}>

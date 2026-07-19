@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useIsMobile } from "../../lib/useMediaQuery";
+import { vhScaled } from "../../styles/theme";
 import { KURSWAHL_FLAG } from "../../pages/Onboarding";
 import Sidebar from "./Sidebar";
 import NotificationPanel from "./NotificationPanel";
@@ -48,7 +49,7 @@ export default function AppShell() {
   };
 
   return (
-    <div style={{ height: "100vh", display: "flex", background: t.bg, overflow: "hidden" }}>
+    <div style={{ height: vhScaled(100), display: "flex", background: t.bg, overflow: "hidden" }}>
       {!isMobile && <Sidebar {...sidebarProps} />}
 
       {/* Mobile: Sidebar als Overlay-Drawer */}

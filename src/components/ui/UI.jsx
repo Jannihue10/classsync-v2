@@ -1,7 +1,7 @@
 import { isValidElement, useEffect } from "react";
 import { GraduationCap } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { radius } from "../../styles/theme";
+import { radius, vhScaled } from "../../styles/theme";
 
 // ---------- Logo ----------
 // Flaches Monogramm-Mark statt Emoji/Verlauf
@@ -188,7 +188,7 @@ export function Modal({ width = 480, onClose, children, noPad }) {
           boxShadow: t.shadowLg,
           width: "100%",
           maxWidth: width,
-          maxHeight: "92vh",
+          maxHeight: vhScaled(92),
           overflowY: "auto",
           padding: noPad ? 0 : 24,
           animation: "cs-slideup .2s ease",

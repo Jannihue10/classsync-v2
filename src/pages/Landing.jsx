@@ -1,6 +1,6 @@
 import { Bell, Calendar, CalendarCheck, FolderOpen, MessageSquare, PenLine } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { radius } from "../styles/theme";
+import { radius, vhScaled } from "../styles/theme";
 import { LogoMark } from "../components/ui/UI";
 
 const APP_URL = "https://app.classsync.de";
@@ -24,7 +24,7 @@ export default function Landing() {
   const { t } = useTheme();
 
   return (
-    <div style={{ background: t.bg, color: t.text, minHeight: "100vh" }}>
+    <div style={{ background: t.bg, color: t.text, minHeight: vhScaled(100) }}>
       {/* Sticky Nav */}
       <nav
         style={{

@@ -18,6 +18,11 @@
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       html, body, #root { margin: 0; padding: 0; height: 100%; }
+      /* Globale UI-Skalierung: --cs-scale wird vom ThemeContext gesetzt.
+         zoom (statt transform: scale) skaliert echtes Layout, d.h. Umbrueche
+         und Grid-Spalten rechnen korrekt neu. Viewport-Einheiten innerhalb
+         des Roots muessen per vhScaled() gegengerechnet werden (theme.js). */
+      #root { zoom: var(--cs-scale, 1); }
       body {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         -webkit-font-smoothing: antialiased;

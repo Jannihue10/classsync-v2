@@ -1,6 +1,6 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { radius } from "../../styles/theme";
+import { radius, vhScaled } from "../../styles/theme";
 import { LogoMark } from "../ui/UI";
 
 // Zentrierte Karte für Login/Register/Onboarding
@@ -9,7 +9,7 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: vhScaled(100),
         background: t.bg,
         display: "flex",
         flexDirection: "column",

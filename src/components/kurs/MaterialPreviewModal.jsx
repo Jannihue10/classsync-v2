@@ -5,7 +5,7 @@ import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_COLORS } from "../../lib/faecher";
 import { relativeTime } from "../../lib/dates";
-import { radius } from "../../styles/theme";
+import { radius, vhScaled } from "../../styles/theme";
 import { Btn, CloseButton, Modal, Tag } from "../ui/UI";
 import DateiIcon from "../ui/DateiIcon";
 import ConfirmDialog from "../modals/ConfirmDialog";
@@ -72,14 +72,14 @@ export default function MaterialPreviewModal({ mat, klasseId, kurs, onClose, onA
           <iframe
             src={mat.dateiUrl}
             title={mat.titel}
-            style={{ width: "100%", height: "70vh", border: "none", display: "block", background: "#525659" }}
+            style={{ width: "100%", height: vhScaled(70), border: "none", display: "block", background: "#525659" }}
           />
         )}
         {mat.dateiTyp === "Bild" && hasFile && (
           <img
             src={mat.dateiUrl}
             alt={mat.titel}
-            style={{ maxWidth: "100%", maxHeight: "68vh", borderRadius: radius.sm, display: "block", margin: "0 auto" }}
+            style={{ maxWidth: "100%", maxHeight: vhScaled(68), borderRadius: radius.sm, display: "block", margin: "0 auto" }}
           />
         )}
         {mat.dateiTyp === "Notiz" && (

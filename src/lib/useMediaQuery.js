@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MOBILE_BREAKPOINT, WIDE_BREAKPOINT } from "../styles/theme";
 
 export function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -13,9 +14,15 @@ export function useMediaQuery(query) {
 }
 
 export function useIsMobile() {
-  return useMediaQuery("(max-width: 767px)");
+  return useMediaQuery(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+}
+
+export function useIsTablet() {
+  return useMediaQuery(
+    `(min-width: ${MOBILE_BREAKPOINT}px) and (max-width: ${WIDE_BREAKPOINT - 1}px)`
+  );
 }
 
 export function useIsWide() {
-  return useMediaQuery("(min-width: 1200px)");
+  return useMediaQuery(`(min-width: ${WIDE_BREAKPOINT}px)`);
 }

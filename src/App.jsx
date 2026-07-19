@@ -5,6 +5,7 @@ import { MembershipsProvider } from "./context/MembershipsContext";
 import { KlasseProvider, useKlasse } from "./context/KlasseContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { useTheme } from "./context/ThemeContext";
+import { vhScaled } from "./styles/theme";
 import { Spinner } from "./components/ui/UI";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -79,7 +80,7 @@ function KlasseGate() {
 function FullSpinner() {
   const { t } = useTheme();
   return (
-    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ minHeight: vhScaled(100), background: t.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Spinner size={34} />
     </div>
   );
