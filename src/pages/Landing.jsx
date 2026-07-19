@@ -3,7 +3,15 @@ import { useTheme } from "../context/ThemeContext";
 import { radius, vhScaled } from "../styles/theme";
 import { LogoMark } from "../components/ui/UI";
 
-const APP_URL = "https://app.classsync.de";
+// Auf der echten Domain zeigt die Landingpage auf app.classsync.de. Auf einem
+// Vercel-Preview-Deployment würde das aus der Preview heraus in die Produktion
+// springen – dort bleiben wir deshalb auf derselben Origin und erzwingen die App
+// per ?app=1 (siehe main.jsx).
+const IS_PROD_DOMAIN = /(^|\.)classsync\.de$/.test(window.location.hostname);
+const APP_URL = IS_PROD_DOMAIN ? "https://app.classsync.de" : `${window.location.origin}/?app=1`;
+const REGISTER_URL = IS_PROD_DOMAIN
+  ? "https://app.classsync.de/?register=true"
+  : `${window.location.origin}/?app=1&register=true`;
 
 const FEATURES = [
   { icon: FolderOpen, title: "Materialien teilen", text: "Mitschriften, HA-Lösungen, Lernzettel und Aufgabenblätter – als PDF, Bild oder Notiz. Für den ganzen Kurs, in Sekunden." },
@@ -46,7 +54,7 @@ export default function Landing() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <a href={APP_URL} style={btnStyle(t, "ghost")}>Anmelden</a>
-            <a href={`${APP_URL}?register=true`} style={btnStyle(t, "primary")}>Kostenlos starten</a>
+            <a href={REGISTER_URL} style={btnStyle(t, "primary")}>Kostenlos starten</a>
           </div>
         </div>
       </nav>
@@ -72,7 +80,7 @@ export default function Landing() {
           mit deiner Klasse, organisiert nach Kursen und Stundenplan.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 34, flexWrap: "wrap" }}>
-          <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "13px 28px", fontSize: 15 }}>
+          <a href={REGISTER_URL} style={{ ...btnStyle(t, "primary"), padding: "13px 28px", fontSize: 15 }}>
             Kostenlos starten
           </a>
           <a href={APP_URL} style={{ ...btnStyle(t, "ghost"), padding: "13px 28px", fontSize: 15 }}>
@@ -149,7 +157,7 @@ export default function Landing() {
         <p style={{ margin: "0 0 28px", fontSize: 15.5, color: t.textMuted }}>
           Erstelle deine Klasse in unter einer Minute – kostenlos.
         </p>
-        <a href={`${APP_URL}?register=true`} style={{ ...btnStyle(t, "primary"), padding: "14px 32px", fontSize: 15.5 }}>
+        <a href={REGISTER_URL} style={{ ...btnStyle(t, "primary"), padding: "14px 32px", fontSize: 15.5 }}>
           Jetzt kostenlos starten
         </a>
       </section>
