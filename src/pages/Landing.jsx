@@ -1,6 +1,6 @@
 import { Bell, Calendar, CalendarCheck, FolderOpen, MessageSquare, PenLine } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { radius, vhScaled } from "../styles/theme";
+import { radius, safePad, vhScaled } from "../styles/theme";
 import { LogoMark } from "../components/ui/UI";
 
 // Auf der echten Domain zeigt die Landingpage auf app.classsync.de. Auf einem
@@ -44,7 +44,7 @@ export default function Landing() {
         <div
           style={{
             maxWidth: 1080, margin: "0 auto", padding: "12px 20px",
-            paddingTop: "calc(12px + env(safe-area-inset-top))",
+            paddingTop: safePad("top", 12),
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}
         >

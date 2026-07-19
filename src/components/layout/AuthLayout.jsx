@@ -1,6 +1,6 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { radius, vhScaled } from "../../styles/theme";
+import { radius, safeInset, vhScaled } from "../../styles/theme";
 import { LogoMark } from "../ui/UI";
 
 // Zentrierte Karte für Login/Register/Onboarding
@@ -23,8 +23,11 @@ export default function AuthLayout({ title, subtitle, width = 400, children }) {
         title="Design wechseln"
         style={{
           position: "fixed",
-          top: "calc(14px + env(safe-area-inset-top))",
-          right: "calc(14px + env(safe-area-inset-right))",
+          // Schwebender Button: die 14px sind gewollter Abstand ZUR sicheren
+          // Kante, hier ist die Addition richtig – nur das Inset darf nicht
+          // mitskalieren.
+          top: `calc(14px + ${safeInset("top")})`,
+          right: `calc(14px + ${safeInset("right")})`,
           background: t.surface,
           border: `1px solid ${t.border}`, borderRadius: radius.full,
           width: 38, height: 38, cursor: "pointer", color: t.textMuted,

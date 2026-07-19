@@ -7,7 +7,7 @@ import { useMemberships } from "../../context/MembershipsContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useTheme } from "../../context/ThemeContext";
 import { switchActiveKlasse } from "../../lib/klasseActions";
-import { SIDEBAR_WIDTH, radius } from "../../styles/theme";
+import { SIDEBAR_WIDTH, radius, safeExtra, safePad } from "../../styles/theme";
 import { IconButton, LogoMark } from "../ui/UI";
 import CourseAvatar from "../ui/CourseAvatar";
 
@@ -61,14 +61,19 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
-        // Safe-Area: Statusleiste oben, Home-Indikator unten, Notch links (Querformat)
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingLeft: "env(safe-area-inset-left)",
+        // Safe-Area: nur die Notch im Querformat. Statusleiste oben und
+        // Home-Indikator unten werden von Kopf-/Fusszeile absorbiert (safePad),
+        // damit sich Design-Padding und Geraete-Inset nicht addieren.
+        // gegen das KLEINSTE innere Padding rechnen (Nav/Fusszeile: 12px),
+        // sonst ragen diese Zeilen im Querformat in die Notch.
+        paddingLeft: safeExtra("left", 12),
       }}
     >
       {/* Kopf: Logo + Klassen-Wechsler */}
-      <div ref={switcherRef} style={{ padding: "18px 16px 12px", position: "relative" }}>
+      <div
+        ref={switcherRef}
+        style={{ padding: "18px 16px 12px", paddingTop: safePad("top", 18), position: "relative" }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <LogoMark size={32} />
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -209,6 +214,8 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
       <div
         style={{
           borderTop: `1px solid ${t.border}`, padding: "10px 12px",
+          // Home-Indikator: absorbiert statt addiert
+          paddingBottom: safePad("bottom", 10),
           display: "flex", alignItems: "center", gap: 6,
         }}
       >

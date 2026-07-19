@@ -4,7 +4,7 @@ import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { dateToISO, getKW, mondayOf, parseDatum } from "../lib/dates";
-import { radius, vhScaled } from "../styles/theme";
+import { PAGE_PAD, radius, vhScaled } from "../styles/theme";
 import WeekGrid from "../components/kalender/WeekGrid";
 import PageHeader from "../components/layout/PageHeader";
 
@@ -58,7 +58,7 @@ export default function KalenderPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${PAGE_PAD}px ${PAGE_PAD}px 40px` }}>
       <PageHeader
         icon={CalendarIcon}
         title="Kalender"

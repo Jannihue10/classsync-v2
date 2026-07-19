@@ -7,7 +7,7 @@ import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { useSammlungen } from "../lib/useSammlungen";
 import { tsMillis } from "../lib/useKursCollection";
 import { createSammlung } from "../lib/sammlungActions";
-import { radius } from "../styles/theme";
+import { PAGE_PAD, radius } from "../styles/theme";
 import { Btn, Empty, SectionTitle, Spinner } from "../components/ui/UI";
 import PageHeader from "../components/layout/PageHeader";
 import MaterialCard from "../components/kurs/MaterialCard";
@@ -109,7 +109,7 @@ export default function BibliothekPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${PAGE_PAD}px ${PAGE_PAD}px 40px` }}>
       <PageHeader
         icon={Library}
         title="Bibliothek"

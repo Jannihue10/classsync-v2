@@ -3,7 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useIsMobile } from "../../lib/useMediaQuery";
-import { vhScaled } from "../../styles/theme";
+import { PAGE_PAD, safeExtra, safePad, vhScaled } from "../../styles/theme";
 import { KURSWAHL_FLAG } from "../../pages/Onboarding";
 import Sidebar from "./Sidebar";
 import NotificationPanel from "./NotificationPanel";
@@ -69,10 +69,10 @@ export default function AppShell() {
           <header
             style={{
               display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
-              // Safe-Area (Statusleiste / Notch) berücksichtigen
-              paddingTop: "calc(10px + env(safe-area-inset-top))",
-              paddingLeft: "calc(12px + env(safe-area-inset-left))",
-              paddingRight: "calc(12px + env(safe-area-inset-right))",
+              // Safe-Area (Statusleiste / Notch): absorbiert, nicht addiert
+              paddingTop: safePad("top", 10),
+              paddingLeft: safePad("left", 12),
+              paddingRight: safePad("right", 12),
               borderBottom: `1px solid ${t.border}`, background: t.surface, flexShrink: 0,
             }}
           >
@@ -94,9 +94,11 @@ export default function AppShell() {
             flex: 1, overflowY: "auto", minHeight: 0,
             // Desktop/iPad: kein Mobile-Header -> Statusleisten-Abstand hier;
             // Mobile: Header übernimmt den Top-Abstand. Seiten-Insets fürs Querformat.
-            paddingTop: isMobile ? 0 : "env(safe-area-inset-top)",
-            paddingLeft: isMobile ? "env(safe-area-inset-left)" : 0,
-            paddingRight: "env(safe-area-inset-right)",
+            // Die Seiten selbst padden bereits 20px (PAGE_PAD) – nur die Differenz
+            // ergänzen, sonst stapeln sich Design-Padding und Geräte-Inset.
+            paddingTop: isMobile ? 0 : safeExtra("top", PAGE_PAD),
+            paddingLeft: isMobile ? safeExtra("left", PAGE_PAD) : 0,
+            paddingRight: safeExtra("right", PAGE_PAD),
           }}
         >
           <MigrationBanner />

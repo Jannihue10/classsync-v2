@@ -7,7 +7,7 @@ import { useKlasse } from "../context/KlasseContext";
 import { useMemberships } from "../context/MembershipsContext";
 import { useTheme } from "../context/ThemeContext";
 import { acceptMigration, banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse, promoteAdmin, switchActiveKlasse, unbanFromKlasse } from "../lib/klasseActions";
-import { radius } from "../styles/theme";
+import { PAGE_PAD, radius } from "../styles/theme";
 import { Btn, Card, Divider, Input, SectionTitle, Spinner } from "../components/ui/UI";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import ChangeEmailModal from "../components/modals/ChangeEmailModal";
@@ -80,7 +80,7 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
   const letzterAdminIch = binIchAdmin && adminIds.length === 1;
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "20px 20px 40px" }}>
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: `${PAGE_PAD}px ${PAGE_PAD}px 40px` }}>
       <PageHeader icon={User} title="Profil & Klasse" />
 
       <div style={{ display: "grid", gap: 16 }}>

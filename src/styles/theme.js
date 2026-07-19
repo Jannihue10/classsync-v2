@@ -78,3 +78,23 @@ export const AUTO_TABLET_SCALE = UI_SCALES.normal;
 // vh/vw loesen innerhalb des gezoomten #root gegen den UNskalierten Viewport
 // auf und werden danach mitskaliert -> ohne Gegenrechnung 15 % zu gross.
 export const vhScaled = (n) => `calc(${n}vh / var(--cs-scale, 1))`;
+
+// Seitliches/oberes Padding der Seiten-Container (UebersichtPage, KursPage,
+// BibliothekPage, KalenderPage). AppShell rechnet damit die Safe-Area-Differenz
+// aus – deshalb hier zentral und nicht als Literal in den Seiten.
+export const PAGE_PAD = 20;
+
+// --- Safe-Area (iOS-PWA) ------------------------------------------------
+// Geraete-Inset, gegen die UI-Skalierung gerechnet: wo die Notch bzw. der
+// Home-Indikator physisch sitzt, aendert sich nicht, wenn die Schrift waechst.
+export const safeInset = (side) =>
+  `calc(env(safe-area-inset-${side}) / var(--cs-scale, 1))`;
+
+// Fuer Flaechen mit eigenem Padding: mindestens das Design-Padding, mindestens
+// das Inset – NICHT die Summe. Sonst faellt der Abstand auf jedem Geraet um
+// einen anderen Betrag zu gross aus (iPhone-Notch ~59px, iPad ~24px, Desktop 0).
+export const safePad = (side, base) => `max(${base}px, ${safeInset(side)})`;
+
+// Fuer Wrapper, deren Kind bereits `covered`px paddet: nur die Differenz ergaenzen.
+export const safeExtra = (side, covered) =>
+  `max(0px, calc(${safeInset(side)} - ${covered}px))`;

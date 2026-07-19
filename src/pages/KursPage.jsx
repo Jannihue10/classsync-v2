@@ -12,7 +12,7 @@ import { deleteKurs, setKursMembership } from "../lib/klasseActions";
 import { calcTage } from "../lib/dates";
 import { useKursCollection } from "../lib/useKursCollection";
 import { useIsWide } from "../lib/useMediaQuery";
-import { radius } from "../styles/theme";
+import { PAGE_PAD, radius } from "../styles/theme";
 import { Btn, Empty } from "../components/ui/UI";
 import KursFormModal from "../components/modals/KursFormModal";
 import KursMitgliederModal from "../components/modals/KursMitgliederModal";
@@ -85,7 +85,7 @@ export default function KursPage() {
       ];
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${PAGE_PAD}px ${PAGE_PAD}px 40px` }}>
       {/* Kurs-Header */}
       <div
         style={{

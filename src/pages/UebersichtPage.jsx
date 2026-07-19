@@ -11,7 +11,7 @@ import { calcTage, formatDatum, relativeTime, tageLabel } from "../lib/dates";
 import { MAT_COLORS } from "../lib/faecher";
 import { pruefungColor } from "../components/kurs/PruefungenSection";
 import { toggleDone } from "../components/kurs/HASection";
-import { radius } from "../styles/theme";
+import { PAGE_PAD, radius } from "../styles/theme";
 import { Card, Empty, Pill, SectionTitle, Tag } from "../components/ui/UI";
 import PageHeader from "../components/layout/PageHeader";
 
@@ -65,7 +65,7 @@ export default function UebersichtPage() {
   );
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "20px 20px 40px" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: `${PAGE_PAD}px ${PAGE_PAD}px 40px` }}>
       <PageHeader
         title={`Hi, ${profile.nickname}`}
         subtitle={`${klasse.name} · ${meineKurse.length} Kurse`}
