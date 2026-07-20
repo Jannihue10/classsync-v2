@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "classsync-fable",
-      "runtimeExecutable": "powershell",
-      "runtimeArgs": ["-NoProfile", "-Command", "Set-Location 'C:\\Users\\janni\\ClassSync Fable'; npm.cmd run dev"],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
       "port": 5173
     }
   ]
