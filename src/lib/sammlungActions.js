@@ -4,17 +4,19 @@ import { db } from "./firebase";
 // Sammlungen liegen auf Klassenebene (analog zu kurse) und nutzen das bewährte
 // memberIds-Muster: [ownerId] = privat; weitere Mitglieder = geteilt/kollaborativ.
 // items sind Referenzen { kursId, matId } + denormalisierte Fallback-Labels { titel, typ }.
+// pruefung ist optional: dieselbe Referenz-Mechanik für „wofür ist das gedacht".
 
 const sammlungRef = (klasseId, sammlungId) =>
   doc(db, "klassen", klasseId, "sammlungen", sammlungId);
 
-export function createSammlung(klasseId, { name, ownerId, ownerNick }) {
+export function createSammlung(klasseId, { name, ownerId, ownerNick, pruefung }) {
   return addDoc(collection(db, "klassen", klasseId, "sammlungen"), {
     name: name.trim(),
     ownerId,
     ownerNick,
     memberIds: [ownerId],
     items: [],
+    pruefung: pruefung || null,
     createdAt: Date.now(),
   });
 }
@@ -36,6 +38,25 @@ export function itemFromMaterial(mat) {
     titel: mat.titel || "",
     typ: mat.typ || "",
   };
+}
+
+// Gegenstück zu itemFromMaterial für die verknüpfte Prüfung. titel/datum sind
+// denormalisiert, damit die Anzeige hält, wenn die Prüfung gelöscht wird oder man
+// den Kurs verlassen hat (analog zu „Material nicht mehr verfügbar").
+export function pruefungRefFrom(pr) {
+  if (!pr) return null;
+  return {
+    kursId: pr.kurs?.id || pr.kursId,
+    prId: pr.id,
+    titel: pr.titel || "",
+    datum: pr.datum || "",
+  };
+}
+
+// Nur der Owner darf das Feld setzen – die Firestore-Rule lässt Nicht-Owner
+// ausschließlich an items/memberIds (s. firestore.rules, Sammlungen-update).
+export function setSammlungPruefung(klasseId, sammlungId, pruefung) {
+  return updateDoc(sammlungRef(klasseId, sammlungId), { pruefung: pruefung || null });
 }
 
 export function isInSammlung(sammlung, matId) {

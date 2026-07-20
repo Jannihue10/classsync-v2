@@ -98,6 +98,10 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 - **Filter:** Kurs (farbige Chips, Mehrfachauswahl), Material-Typ (Pills), Dateityp (PDF/Bild/Notiz), Klassenmitglied/Autor (Dropdown) und **Sortierung** (Neueste/Älteste/Beliebteste) – plus Volltextsuche. Alle Filter kombinierbar.
 - **Sammlungen:** persönliche Zusammenstellungen von Materialien (z. B. „alles für die Mathe-Prüfung"). Hinzufügen per **Lesezeichen-Button** an Material-Karte oder Vorschau-Modal; „Neue Sammlung" legt direkt an und bestückt sie.
 - **Teilen/Kollaboration:** Sammlungen liegen auf Klassenebene mit `memberIds`-Muster (analog Kurse). Nur Ersteller drin = **privat**; weitere Klassenmitglieder = **geteilt/kollaborativ** (dürfen Materialien hinzufügen/entfernen). Ersteller verwaltet Freigabe, Umbenennen und Löschen; Kollaboratoren sehen die Sammlung unter „Mit mir geteilt" und können sie verlassen.
+- **Prüfungs-Verknüpfung:** Eine Sammlung kann optional **genau eine Prüfung** referenzieren (Feld `pruefung`, s. §6) – gewählt beim Anlegen (`SammlungFormModal`) oder später im Detailmodal, **nur durch den Ersteller** (deckt sich mit dem Owner-Zweig der Update-Rule, deshalb ohne Rules-Änderung). Kachel und Detailkopf zeigen Prüfungstitel + Countdown-Pill (`PruefungChip`, nutzt `pruefungColor` aus `PruefungenSection`).
+- **Rückrichtung:** In der Prüfungsliste eines Kurses erscheint unter der Prüfung je ein Chip der zugehörigen Sammlungen → Klick auf `/bibliothek?sammlung=<id>` (die `BibliothekPage` öffnet daraufhin Tab + Detailmodal und räumt den Query-Param wieder ab). Sichtbar sind nur eigene und mit einem geteilte Sammlungen – `useSammlungen` fragt `memberIds array-contains uid` ab, deckungsgleich mit der Read-Rule.
+- Wird eine verknüpfte Prüfung gelöscht (oder verlässt man den Kurs), bleibt die Referenz **bewusst stehen** – **keine Kaskade**, gleiches Prinzip wie bei „Material nicht mehr verfügbar". Das denormalisierte `titel`/`datum` trägt die Anzeige weiter; der Chip wird zusätzlich **durchgestrichen + „nicht mehr verfügbar"** markiert (`isPruefungVerwaist` in `PruefungChip.jsx`). Gelöscht vs. Kurs verlassen ist clientseitig **nicht** unterscheidbar, daher dieselbe unscharfe Formulierung wie beim Material.
+- ⚠️ Die Verwaist-Erkennung schließt aus dem **Fehlen** eines Docs – dafür reicht die Liste aus `useAcrossKurse` allein nicht, sie ist anfangs schlicht leer. Deshalb trägt sie ein **`ready`-Flag** (true, sobald jeder Kurs-Listener seinen ersten Snapshot geliefert hat); solange es false ist, gilt nichts als verwaist. Der Übergangszustand zeigt also im Zweifel den normalen Countdown und kippt danach – nie umgekehrt. **Wer künftig aus einem fehlenden Doc etwas ableitet, muss `ready` genauso abfragen.**
 - Materialien werden als **Referenzen** gespeichert und beim Öffnen live aufgelöst (aktuelle Datei/Likes). Gelöschte oder nicht mehr zugängliche Materialien erscheinen als „nicht verfügbar", ohne die Sammlung zu beschädigen. Sammlung löschen entfernt **nur** die Zusammenstellung – die Materialien selbst bleiben in ihren Kursen.
 - **Rückwärtskompatibel:** `MaterialCard`/`MaterialPreviewModal` bekamen optionale Props (`showKurs`, `onAddToSammlung`); die KursPage bleibt unverändert.
 
@@ -212,9 +216,9 @@ ClassSync Fable/
     │   ├── klasseActions.js        ← generateCode/generateUniqueCode (Kollisionsprüfung), createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
     │   ├── authActions.js          ← **NEU**: deleteAccount({user,profile,myClasses,currentPassword}) – Reauth, Letzter-Admin-Guard, Mitgliedschafts-Cleanup, users-Doc + Auth-User löschen. Naht (`TODO`) für DSGVO-Voll-Wipe (s. §9)
     │   ├── useKursCollection.js    ← Hook: Live-Listener auf eine Kurs-Subcollection; tsMillis()
-    │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt
+    │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt; **`.ready`-Flag an der Liste** (alle Listener haben geliefert) für Aufrufer, die aus einem *fehlenden* Doc schließen
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
-    │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial
+    │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial, **setSammlungPruefung/pruefungRefFrom**
     │   └── useMediaQuery.js        ← useIsMobile (<768px), **useIsTablet (768–1199px)**, useIsWide (≥1200px); nutzt jetzt die MOBILE_/WIDE_BREAKPOINT-Konstanten aus theme.js
     ├── context/
     │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; **changeEmail** (Reauth + Resend/DEV-Fallback) + **users.email-Sync** nach Wechsel; authErrorText
@@ -248,8 +252,11 @@ ClassSync Fable/
     │   │   └── chatActions.js      ← editMessage, deleteMessage (Tombstone), purgeMessage (Hard-Delete/Kaskade), canEditMessage, canDeleteMessage
     │   ├── bibliothek/
     │   │   ├── LibraryFilters.jsx      ← Filterleiste (Suche, Sortierung, Dateityp, Autor, Kurs-Chips, Typ-Pills)
-    │   │   ├── SammlungCard.jsx        ← Kachel einer Sammlung (Name, Item-Anzahl, geteilt-Badge)
-    │   │   ├── SammlungDetailModal.jsx ← Sammlung öffnen: Material-Grid, entfernen, umbenennen, teilen, löschen/verlassen
+    │   │   ├── SammlungCard.jsx        ← Kachel einer Sammlung (Name, Item-Anzahl, geteilt-Badge, Prüfungs-Chip)
+    │   │   ├── SammlungFormModal.jsx   ← **NEU**: „Neue Sammlung" (Name + Prüfung); ersetzt den früheren window.prompt
+    │   │   ├── PruefungSelect.jsx      ← **NEU**: Auswahl der Prüfung (nur kommende; verwaiste Referenz bleibt als Option)
+    │   │   ├── PruefungChip.jsx        ← **NEU**: Anzeige der verknüpften Prüfung (Titel + Countdown-Pill)
+    │   │   ├── SammlungDetailModal.jsx ← Sammlung öffnen: Material-Grid, entfernen, umbenennen, Prüfung verknüpfen, teilen, löschen/verlassen
     │   │   ├── AddToSammlungModal.jsx  ← Material zu Sammlung(en) hinzufügen/entfernen + „Neue Sammlung"
     │   │   └── ShareSammlungModal.jsx  ← Klassenmitglieder für Freigabe an-/abwählen
     │   ├── profil/                 ← **NEU** (Juli 2026): Bausteine der Profilseite, s. §9 „Profilseite"
@@ -365,6 +372,9 @@ ClassSync Fable/
   ownerNick:   string            ← denormalisiert (Anzeige)
   memberIds:   string[]          ← [ownerId] = privat; weitere = geteilt/kollaborativ
   items:       [{ kursId, matId, titel, typ }]   ← Referenzen + denormalisierte Fallback-Labels
+  pruefung:    { kursId, prId, titel, datum } | null   ← NEU, optional: „wofür ist das gedacht"
+                                                 (dieselbe Referenz-Mechanik wie items; nur der
+                                                  Owner darf sie setzen)
   createdAt:   number
 ```
 

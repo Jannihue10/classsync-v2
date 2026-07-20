@@ -1,9 +1,10 @@
 import { Library, Users } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { radius } from "../../styles/theme";
+import PruefungChip, { isPruefungVerwaist } from "./PruefungChip";
 
 // Kachel einer Sammlung in der Bibliothek.
-export default function SammlungCard({ sammlung, onOpen }) {
+export default function SammlungCard({ sammlung, pruefungen, onOpen }) {
   const { t } = useTheme();
   const anzahl = (sammlung.items || []).length;
   const geteilt = (sammlung.memberIds || []).length > 1;
@@ -41,6 +42,15 @@ export default function SammlungCard({ sammlung, onOpen }) {
             </span>
           )}
         </span>
+        {sammlung.pruefung && (
+          <span style={{ display: "flex", marginTop: 4, minWidth: 0 }}>
+            <PruefungChip
+              pruefung={sammlung.pruefung}
+              verwaist={isPruefungVerwaist(sammlung.pruefung, pruefungen)}
+              compact
+            />
+          </span>
+        )}
       </span>
     </div>
   );

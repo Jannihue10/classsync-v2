@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Check, FileWarning, LogOut, Pencil, Trash2, Users, X } from "lucide-react";
+import { CalendarPlus, Check, FileWarning, LogOut, Pencil, Trash2, Users, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_COLORS } from "../../lib/faecher";
 import {
-  deleteSammlung, leaveSammlung, removeItem, renameSammlung,
+  deleteSammlung, leaveSammlung, removeItem, renameSammlung, setSammlungPruefung,
 } from "../../lib/sammlungActions";
 import { radius } from "../../styles/theme";
 import { Btn, CloseButton, Empty, Modal, Tag } from "../ui/UI";
@@ -14,9 +14,12 @@ import ConfirmDialog from "../modals/ConfirmDialog";
 import MaterialCard from "../kurs/MaterialCard";
 import MaterialPreviewModal from "../kurs/MaterialPreviewModal";
 import ShareSammlungModal from "./ShareSammlungModal";
+import PruefungChip, { isPruefungVerwaist } from "./PruefungChip";
+import PruefungSelect from "./PruefungSelect";
 
-// Sammlung öffnen: Material-Grid (live aufgelöst), entfernen, umbenennen, teilen, löschen/verlassen.
-export default function SammlungDetailModal({ sammlung, liveMatById, onClose }) {
+// Sammlung öffnen: Material-Grid (live aufgelöst), entfernen, umbenennen, teilen,
+// Prüfung verknüpfen, löschen/verlassen.
+export default function SammlungDetailModal({ sammlung, liveMatById, pruefungen = [], onClose }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const { klasse } = useKlasse();
@@ -28,6 +31,7 @@ export default function SammlungDetailModal({ sammlung, liveMatById, onClose }) 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [previewMat, setPreviewMat] = useState(null);
+  const [editPruefung, setEditPruefung] = useState(false);
 
   const items = sammlung.items || [];
   const geteilt = (sammlung.memberIds || []).length > 1;
@@ -36,6 +40,11 @@ export default function SammlungDetailModal({ sammlung, liveMatById, onClose }) 
     const v = name.trim();
     if (v.length >= 1 && v !== sammlung.name) await renameSammlung(klasse.id, sammlung.id, v);
     setEditName(false);
+  }
+
+  async function savePruefung(ref) {
+    setEditPruefung(false);
+    await setSammlungPruefung(klasse.id, sammlung.id, ref);
   }
 
   return (
@@ -79,6 +88,41 @@ export default function SammlungDetailModal({ sammlung, liveMatById, onClose }) 
                 · <Users size={12} strokeWidth={1.8} /> geteilt · von {sammlung.ownerNick}
               </span>
             )}
+          </div>
+
+          {/* Verknüpfte Prüfung – ändern darf nur der Ersteller (s. Firestore-Rule) */}
+          <div style={{ marginTop: 7 }}>
+            {editPruefung ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 420 }}>
+                <PruefungSelect
+                  autoFocus
+                  pruefungen={pruefungen}
+                  value={sammlung.pruefung}
+                  onChange={savePruefung}
+                />
+                <Btn small variant="ghost" onClick={() => setEditPruefung(false)}>Fertig</Btn>
+              </div>
+            ) : sammlung.pruefung ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, maxWidth: "100%" }}>
+                <PruefungChip
+                  pruefung={sammlung.pruefung}
+                  verwaist={isPruefungVerwaist(sammlung.pruefung, pruefungen)}
+                />
+                {istOwner && (
+                  <button
+                    onClick={() => setEditPruefung(true)}
+                    title="Prüfung ändern"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: t.textFaint, padding: 2, display: "flex" }}
+                  >
+                    <Pencil size={12.5} strokeWidth={1.8} />
+                  </button>
+                )}
+              </span>
+            ) : istOwner ? (
+              <Btn small variant="ghost" onClick={() => setEditPruefung(true)}>
+                <CalendarPlus size={13} strokeWidth={1.8} /> Prüfung verknüpfen
+              </Btn>
+            ) : null}
           </div>
         </div>
 

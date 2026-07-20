@@ -1,12 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FolderOpen, FolderPlus, Library, Plus, SearchX } from "lucide-react";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../context/AuthContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { useSammlungen } from "../lib/useSammlungen";
 import { tsMillis } from "../lib/useKursCollection";
-import { createSammlung } from "../lib/sammlungActions";
 import { PAGE_PAD, radius } from "../styles/theme";
 import { Btn, Empty, SectionTitle, Spinner } from "../components/ui/UI";
 import PageHeader from "../components/layout/PageHeader";
@@ -16,14 +15,15 @@ import LibraryFilters from "../components/bibliothek/LibraryFilters";
 import AddToSammlungModal from "../components/bibliothek/AddToSammlungModal";
 import SammlungCard from "../components/bibliothek/SammlungCard";
 import SammlungDetailModal from "../components/bibliothek/SammlungDetailModal";
+import SammlungFormModal from "../components/bibliothek/SammlungFormModal";
 
 const DEFAULT_FILTERS = { kursIds: new Set(), typ: "Alle", dateiTyp: "", autorId: "", sort: "neu", search: "" };
 
 export default function BibliothekPage() {
   const { t } = useTheme();
-  const { profile } = useAuth();
   const { klasse, meineKurse } = useKlasse();
   const materialien = useAcrossKurse("materialien");
+  const pruefungen = useAcrossKurse("pruefungen");
   const { meine, geteilt, loading: sammlungenLoading } = useSammlungen();
 
   const [tab, setTab] = useState("material");
@@ -31,7 +31,18 @@ export default function BibliothekPage() {
   const [previewMat, setPreviewMat] = useState(null);
   const [addMat, setAddMat] = useState(null);
   const [openSammlungId, setOpenSammlungId] = useState(null);
-  const [neuBusy, setNeuBusy] = useState(false);
+  const [neuOpen, setNeuOpen] = useState(false);
+
+  // Deeplink aus dem Sammlungs-Chip an einer Prüfung (/bibliothek?sammlung=<id>)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("sammlung");
+    if (!id) return;
+    setTab("sammlungen");
+    setOpenSammlungId(id);
+    searchParams.delete("sammlung");
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const onChange = (patch) => setFilters((f) => ({ ...f, ...patch }));
 
@@ -77,18 +88,6 @@ export default function BibliothekPage() {
 
   const openSammlung = [...meine, ...geteilt].find((s) => s.id === openSammlungId) || null;
   const sammlungenCount = meine.length + geteilt.length;
-
-  async function neueSammlung() {
-    if (neuBusy) return;
-    const name = window.prompt("Name der neuen Sammlung:");
-    if (!name || !name.trim()) return;
-    setNeuBusy(true);
-    try {
-      await createSammlung(klasse.id, { name, ownerId: profile.uid, ownerNick: profile.nickname });
-    } finally {
-      setNeuBusy(false);
-    }
-  }
 
   const tabBtn = (key, label, count) => {
     const active = tab === key;
@@ -158,7 +157,7 @@ export default function BibliothekPage() {
           <div>
             <SectionTitle
               action={
-                <Btn small onClick={neueSammlung}>
+                <Btn small onClick={() => setNeuOpen(true)}>
                   <Plus size={14} strokeWidth={2} /> Neue Sammlung
                 </Btn>
               }
@@ -172,12 +171,12 @@ export default function BibliothekPage() {
                 icon={FolderPlus}
                 text="Noch keine Sammlungen"
                 sub={'Bündle Materialien für eine Prüfung – über „Neue Sammlung" oder das Lesezeichen an einem Material.'}
-                action={<Btn onClick={neueSammlung}><Plus size={15} strokeWidth={2} /> Sammlung anlegen</Btn>}
+                action={<Btn onClick={() => setNeuOpen(true)}><Plus size={15} strokeWidth={2} /> Sammlung anlegen</Btn>}
               />
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
                 {meine.map((s) => (
-                  <SammlungCard key={s.id} sammlung={s} onOpen={() => setOpenSammlungId(s.id)} />
+                  <SammlungCard key={s.id} sammlung={s} pruefungen={pruefungen} onOpen={() => setOpenSammlungId(s.id)} />
                 ))}
               </div>
             )}
@@ -188,7 +187,7 @@ export default function BibliothekPage() {
               <SectionTitle>Mit mir geteilt <span style={{ color: t.textFaint, fontWeight: 500 }}>({geteilt.length})</span></SectionTitle>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
                 {geteilt.map((s) => (
-                  <SammlungCard key={s.id} sammlung={s} onOpen={() => setOpenSammlungId(s.id)} />
+                  <SammlungCard key={s.id} sammlung={s} pruefungen={pruefungen} onOpen={() => setOpenSammlungId(s.id)} />
                 ))}
               </div>
             </div>
@@ -206,10 +205,18 @@ export default function BibliothekPage() {
         />
       )}
       {addMat && <AddToSammlungModal mat={addMat} onClose={() => setAddMat(null)} />}
+      {neuOpen && (
+        <SammlungFormModal
+          pruefungen={pruefungen}
+          onClose={() => setNeuOpen(false)}
+          onCreated={(id) => { setTab("sammlungen"); setOpenSammlungId(id); }}
+        />
+      )}
       {openSammlung && (
         <SammlungDetailModal
           sammlung={openSammlung}
           liveMatById={liveMatById}
+          pruefungen={pruefungen}
           onClose={() => setOpenSammlungId(null)}
         />
       )}
