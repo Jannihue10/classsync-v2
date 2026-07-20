@@ -164,6 +164,7 @@ Beide Gefahrenzonen nutzen dieselbe Komponente (`DangerCard`) und sitzen jeweils
 
 ### Theming & Designsprache
 - Kompletter **Light/Dark Mode** mit Design-Tokens in `src/styles/theme.js`; initial via `prefers-color-scheme`, gespeichert in `localStorage` (`classsync_theme`)
+- **Umschalten nur an einer Stelle:** In der eingeloggten App liegt die Design-Wahl ausschließlich im **Profil → Konto → „Design"** (Segmente Hell/Dunkel, direkt über der UI-Größe). Der frühere Icon-Button im Sidebar-Fuß wurde entfernt – er war die zweite Bedienstelle für dieselbe Einstellung und existierte auf Mobil ohnehin nie (die TopBar hatte ihn nicht). Der Toggle in `AuthLayout` **bleibt**: auf Login/Register/Onboarding gibt es kein Profil, dort ist er die einzige Möglichkeit.
 - **Globale UI-Skalierung (Juli 2026):** Auf Tablets war die UI zu klein (ein iPad ist weder `isMobile` noch `isWide` und bekam Desktop-Größen). Die ganze App skaliert jetzt über **CSS `zoom` auf `#root`**, gesteuert per `--cs-scale` aus dem `ThemeContext`. Tablet-Breite → automatisch **1.15x**, Desktop/Handy → 1.0. Im Profil zusätzlich wählbar (**Automatisch / Klein / Normal / Groß**, `classsync_uiscale` in `localStorage`). „Klein" = 1.0 = exakt das Aussehen vor der Änderung und damit der Notausgang. Details + Fallstricke in §9 „UI-Skalierung & Safe-Area"
 - Styling ausschließlich **Inline Styles + Tokens**, keine CSS-Library; globale Resets + Keyframes (`cs-spin`, `cs-fadein`, `cs-slideup`, `cs-slidein-left/right`) in `index.html`
 - **Designsprache (bewusster „De-AI"-Feinschliff, Juli 2026):** Slate-Neutraltöne mit sparsamem Akzent (Light `#3b6ea5`, Dark `#6d9bcf`) statt des früheren Indigo `#6366f1`; **keine Farbverläufe**; flache Hairline-Schatten; Radius 7/10/14. **Keine Emoji in der UI** – Icons kommen aus `lucide-react` (Linien-Icons, `strokeWidth 1.8`), Kurse als `CourseAvatar`-Monogramme, Logo als flaches `LogoMark` (GraduationCap auf Akzent-Quadrat). Diese Prinzipien bei neuen Features beibehalten!
@@ -234,7 +235,7 @@ ClassSync Fable/
     │   ├── ui/DateiIcon.jsx        ← PDF/Bild/Notiz-Icon (Lucide)
     │   ├── layout/
     │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes (inkl. /bibliothek), Mobile-Drawer, MigrationBanner, öffnet Kurswahl-/KursForm-/AddKlasse-/Notification-Overlays
-    │   │   ├── Sidebar.jsx         ← Logo + **Klassen-Switcher-Dropdown** (myClasses, aktive ✓, „Klasse hinzufügen"), Nav (Übersicht, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke/Theme unten
+    │   │   ├── Sidebar.jsx         ← Logo + **Klassen-Switcher-Dropdown** (myClasses, aktive ✓, „Klasse hinzufügen"), Nav (Übersicht, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke unten
     │   │   ├── MigrationBanner.jsx ← **NEU**: offene Schuljahres-Einladungen (pendingMigrations) mit „Beitreten"/„Später"
     │   │   ├── AuthLayout.jsx      ← zentrierte Karte für Login/Register/Onboarding/Setup; exportiert Logo
     │   │   ├── PageHeader.jsx      ← Seitenkopf (Icon, Titel, Untertitel, Aktion)
@@ -292,7 +293,7 @@ ClassSync Fable/
 **Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen). `test-resend.mjs` — lokaler Auth-Mail-Test (`verify|reset|changeEmail`) über Admin-SDK + Resend ohne Deploy (s. §9 E-Mail-Adresse ändern).
 
 **Routen:** `/` Übersicht · `/bibliothek` · `/kurs/:kursId` · `/kalender` · `/profil` · `/stundenplan` → Redirect auf `/kalender` · `*` → `/`
-**Sidebar-Nav:** Übersicht · Bibliothek · Kalender (+ Kursliste, Profil/Glocke/Theme unten)
+**Sidebar-Nav:** Übersicht · Bibliothek · Kalender (+ Kursliste, Profil/Glocke unten)
 
 ---
 

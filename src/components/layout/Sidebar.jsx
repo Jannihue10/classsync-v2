@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, Calendar, Check, ChevronDown, LayoutGrid, Library, Moon, Plus, Settings2, Sun } from "lucide-react";
+import { Bell, Calendar, Check, ChevronDown, LayoutGrid, Library, Plus, Settings2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useMemberships } from "../../context/MembershipsContext";
@@ -12,7 +12,7 @@ import { IconButton, LogoMark } from "../ui/UI";
 import CourseAvatar from "../ui/CourseAvatar";
 
 export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, onOpenNotifications, onOpenAddKlasse }) {
-  const { t, toggle, mode } = useTheme();
+  const { t } = useTheme();
   const { profile } = useAuth();
   const { klasse, meineKurse } = useKlasse();
   const { myClasses } = useMemberships();
@@ -210,7 +210,7 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         </button>
       </div>
 
-      {/* Fuß: Profil + Glocke + Theme */}
+      {/* Fuß: Profil + Glocke */}
       <div
         style={{
           borderTop: `1px solid ${t.border}`, padding: "10px 12px",
@@ -249,9 +249,6 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         </button>
         <IconButton title="Benachrichtigungen" badge={unreadCount} onClick={onOpenNotifications}>
           <Bell size={17} strokeWidth={1.8} />
-        </IconButton>
-        <IconButton title="Design wechseln" onClick={toggle}>
-          {mode === "light" ? <Moon size={17} strokeWidth={1.8} /> : <Sun size={17} strokeWidth={1.8} />}
         </IconButton>
       </div>
     </aside>
