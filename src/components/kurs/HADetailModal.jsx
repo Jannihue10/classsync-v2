@@ -8,6 +8,7 @@ import { calcTage, formatDatum } from "../../lib/dates";
 import { radius } from "../../styles/theme";
 import { Btn, Divider, Input, Modal, ModalHeader } from "../ui/UI";
 import { haRef, hideForMe, toggleDone } from "./HASection";
+import StundenChips from "./StundenChips";
 
 export default function HADetailModal({ klasseId, kurs, ha, onClose }) {
   const { t } = useTheme();
@@ -55,7 +56,10 @@ export default function HADetailModal({ klasseId, kurs, ha, onClose }) {
       {editMode ? (
         <form onSubmit={handleSave} style={{ display: "grid", gap: 14 }}>
           <Input label="Aufgabe" required value={text} onChange={(e) => setText(e.target.value)} maxLength={300} textarea />
-          <Input label="Fällig am" type="date" required value={faellig} onChange={(e) => setFaellig(e.target.value)} />
+          <div style={{ display: "grid", gap: 8 }}>
+            <Input label="Fällig am" type="date" required value={faellig} onChange={(e) => setFaellig(e.target.value)} />
+            <StundenChips zeiten={kurs.zeiten} value={faellig} onPick={setFaellig} />
+          </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <Btn variant="ghost" type="button" onClick={() => setEditMode(false)} disabled={busy}>Abbrechen</Btn>
             <Btn type="submit" disabled={busy}>{busy ? "Speichern…" : "Speichern"}</Btn>

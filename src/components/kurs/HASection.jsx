@@ -5,10 +5,11 @@ import { db } from "../../lib/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useTheme } from "../../context/ThemeContext";
-import { calcTage, formatDatum, todayISO } from "../../lib/dates";
+import { calcTage, formatDatum, naechsteStunden, todayISO } from "../../lib/dates";
 import { radius } from "../../styles/theme";
 import { Btn, Card, Empty, SectionTitle } from "../ui/UI";
 import HADetailModal from "./HADetailModal";
+import StundenChips from "./StundenChips";
 
 export function haRef(klasseId, kursId, haId) {
   return doc(db, "klassen", klasseId, "kurse", kursId, "hausaufgaben", haId);
@@ -37,7 +38,9 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const [text, setText] = useState("");
-  const [faellig, setFaellig] = useState(todayISO());
+  // HAs sind fast immer zur nächsten Stunde fällig – ohne Kurszeiten bleibt es bei "heute"
+  const naechsteISO = () => naechsteStunden(kurs.zeiten, 1)[0]?.iso || todayISO();
+  const [faellig, setFaellig] = useState(naechsteISO);
   const [busy, setBusy] = useState(false);
   const [detailId, setDetailId] = useState(null);
 
@@ -66,7 +69,7 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
         createdAt: serverTimestamp(),
       });
       setText("");
-      setFaellig(todayISO());
+      setFaellig(naechsteISO());
     } finally {
       setBusy(false);
     }
@@ -108,6 +111,7 @@ export default function HASection({ klasseId, kurs, hausaufgaben, compact }) {
             <Plus size={15} strokeWidth={2} />
           </Btn>
         </div>
+        <StundenChips zeiten={kurs.zeiten} value={faellig} onPick={setFaellig} style={{ width: "100%" }} />
       </form>
 
       {sichtbare.length === 0 ? (

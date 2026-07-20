@@ -4,6 +4,8 @@ export const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr"];
 export const WOCHENTAGE_LANG = {
   Mo: "Montag", Di: "Dienstag", Mi: "Mittwoch", Do: "Donnerstag", Fr: "Freitag",
 };
+// Kürzel -> JS getDay() (0 = So)
+export const TAG_INDEX = { Mo: 1, Di: 2, Mi: 3, Do: 4, Fr: 5 };
 
 // "YYYY-MM-DD" -> "DD.MM.YYYY"
 export function formatDatum(datum) {
@@ -95,6 +97,32 @@ export function timeToMin(zeit) {
   const [h, m] = zeit.split(":").map(Number);
   if (Number.isNaN(h)) return null;
   return h * 60 + (m || 0);
+}
+
+// Die nächsten Kurstermine ab jetzt – [{ iso, day, zeit }], höchstens einer pro Tag.
+// Eine Stunde, die heute schon begonnen hat, zählt nicht mehr mit: wer während des
+// Unterrichts eine HA einträgt, meint den nächsten Termin, nicht den laufenden.
+export function naechsteStunden(zeiten, count = 2, from = new Date()) {
+  const tage = (zeiten || []).filter((z) => TAG_INDEX[z?.day] && z?.zeit);
+  if (tage.length === 0) return [];
+
+  const jetzt = from.getHours() * 60 + from.getMinutes();
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0);
+
+  const treffer = [];
+  for (let i = 0; i < 14 && treffer.length < count; i++) {
+    const tag = new Date(start);
+    tag.setDate(tag.getDate() + i);
+    const passend = tage
+      .filter((z) => TAG_INDEX[z.day] === tag.getDay())
+      .filter((z) => i > 0 || timeToMin(z.zeit) > jetzt)
+      .sort((a, b) => timeToMin(a.zeit) - timeToMin(b.zeit));
+    if (passend.length > 0) {
+      treffer.push({ iso: dateToISO(tag), day: passend[0].day, zeit: passend[0].zeit });
+    }
+  }
+  return treffer;
 }
 
 // Countdown-Label für Prüfungen

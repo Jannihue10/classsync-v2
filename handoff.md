@@ -107,6 +107,8 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 
 ### Hausaufgaben
 - **Inline-Eingabeleiste** oben (Text + Datum + Enter) – kein Modal nötig
+- **„Nächste Stunde" als Vorgabe (Juli 2026):** HAs sind fast immer zur nächsten Stunde fällig, das Datumsfeld startet deshalb auf dem **nächsten Kurstermin** aus `kurs.zeiten` (vorher `todayISO()`) und springt nach dem Speichern wieder dorthin. Darunter zwei Schnellwahl-Chips (`StundenChips.jsx`, auch im `HADetailModal`) für die nächsten beiden Termine; das native `<input type="date">` bleibt für Sonderfälle. Berechnung: `naechsteStunden(zeiten, count, from)` in `dates.js`. ⚠️ Eine Stunde, die **heute schon begonnen hat**, zählt bewusst nicht mehr mit – wer während des Unterrichts die HA einträgt, meint den nächsten Termin. Kurse **ohne** `zeiten` (möglich!) → keine Chips, Fallback auf heute.
+- **Kein eigener Datepicker:** Der ursprüngliche Wunsch „nächste Stunde im Kalender markieren" ist mit `<input type="date">` nicht umsetzbar – Browser lassen keine Gestaltung einzelner Tage zu. Die Chips lösen das ohne 250-Zeilen-Popover (Positionierung/Safe-Area/Mobil). Wer das doch angeht: es gäbe projektweit **keinen** bestehenden Popover-Baustein.
 - Klick auf HA → Detailmodal: Bearbeiten (Autor/Klassen-Admin), Fällig-Info, Erledigt-Statistik
 - **Erledigt pro User:** `doneBy: uid[]` (Checkbox in Liste + Übersicht)
 - **„Für mich löschen":** `hiddenBy: uid[]` – Auto-Cleanup löscht das Doc, wenn alle `memberIds` es versteckt haben **und** der Auslöser Autor oder Klassen-Admin ist (sonst bleibt es harmlos versteckt liegen – Rules-Design, s. §8)
@@ -212,7 +214,7 @@ ClassSync Fable/
     ├── App.jsx                     ← Auth-Gate: … → Onboarding (klasseIds leer) → MembershipsProvider → KlasseProvider(key=activeKlasseId) → AppShell
     ├── lib/
     │   ├── firebase.js             ← Init aus import.meta.env; exportiert db, auth, storage, firebaseConfigured
-    │   ├── dates.js                ← formatDatum, parseDatum, calcTage, tageLabel, relativeTime, formatUhrzeit, getKW, mondayOf, timeToMin, todayISO, dateToISO, WOCHENTAGE
+    │   ├── dates.js                ← formatDatum, parseDatum, calcTage, tageLabel, relativeTime, formatUhrzeit, getKW, mondayOf, timeToMin, todayISO, dateToISO, WOCHENTAGE, **TAG_INDEX** (Kürzel→`getDay()`; das einzige echte Mapping – `WeekGrid` mappt weiterhin rein positionell über den Array-Index), **naechsteStunden** (nächste Kurstermine aus `zeiten`, s. §3 Hausaufgaben)
     │   ├── faecher.js              ← FACH_VORLAGEN (18), MAT_TYPEN, MAT_COLORS, MAT_ICONS, DATEITYP_ICONS, KURS_FARBEN
     │   ├── klasseActions.js        ← generateCode/generateUniqueCode (Kollisionsprüfung), createKlasse/joinByCode (klasseIds+activeKlasseId, Ban-Pre-Check), switchActiveKlasse, promote/demoteAdmin, setKursMembership, banFromKlasse/unbanFromKlasse, leaveKlasse (Multi-Klassen), startMigration/acceptMigration/dismissMigration/endMigration, deleteKurs/deleteKlasse (Kaskade inkl. Sammlungen, stepError-Kontext)
     │   ├── authActions.js          ← **NEU**: deleteAccount({user,profile,myClasses,currentPassword}) – Reauth, Letzter-Admin-Guard, Mitgliedschafts-Cleanup, users-Doc + Auth-User löschen. Naht (`TODO`) für DSGVO-Voll-Wipe (s. §9)
@@ -247,7 +249,8 @@ ClassSync Fable/
     │   │   ├── UploadModal.jsx     ← Typ-Auswahl, Titel, Beschreibung, Datei (MAX_MB=10), Progress
     │   │   ├── materialActions.js  ← toggleLike, deleteMaterial (Storage+Doc), canDeleteMaterial(mat, uid, isKlassenAdmin, kurs)
     │   │   ├── HASection.jsx       ← Inline-Eingabe, Liste, doneBy-Toggle; exportiert haRef, toggleDone, hideForMe (Auto-Cleanup)
-    │   │   ├── HADetailModal.jsx   ← Bearbeiten, Erledigt, Für mich/für alle löschen
+    │   │   ├── HADetailModal.jsx   ← Bearbeiten, Erledigt, Für mich/für alle löschen (mit StundenChips im Edit-Modus)
+    │   │   ├── StundenChips.jsx    ← **NEU**: Schnellwahl-Pills „nächste/übernächste Stunde" fürs Fälligkeitsdatum; Styling = Filter-Pills aus MaterialGrid (1.5px-Rand, `${accent}22`), rendert `null` ohne Kurszeiten
     │   │   ├── PruefungenSection.jsx ← Inline-Eingabe, Countdown-Pills; exportiert pruefungColor
     │   │   ├── ChatPanel.jsx       ← Bubbles, Auto-Scroll, Eingabezeile; Aktionsmenü (Bearbeiten/Löschen), Inline-Edit, Pencil-Marker, Tombstone
     │   │   └── chatActions.js      ← editMessage, deleteMessage (Tombstone), purgeMessage (Hard-Delete/Kaskade), canEditMessage, canDeleteMessage
