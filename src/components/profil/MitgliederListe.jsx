@@ -7,7 +7,7 @@ import { demoteAdmin, promoteAdmin, unbanFromKlasse } from "../../lib/klasseActi
 import { radius } from "../../styles/theme";
 import { Btn, Card, Divider, SectionTitle, Spinner } from "../ui/UI";
 
-export default function MitgliederListe({ mitglieder, onBan }) {
+export default function MitgliederListe({ mitglieder, onBan, onSelfDemote }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const { klasse, isKlassenAdmin } = useKlasse();
@@ -49,8 +49,12 @@ export default function MitgliederListe({ mitglieder, onBan }) {
               if (!istAdmin) {
                 actions.push({ key: "promote", icon: Crown, label: "Zum Admin", onClick: () => promoteAdmin(klasse.id, m.uid) });
               }
+              // Sich selbst zu degradieren ist nicht selbst umkehrbar -> Rückfrage (Dialog in der ProfilPage)
               if (istAdmin && !letzterAdmin) {
-                actions.push({ key: "demote", icon: ShieldOff, label: "Admin entfernen", onClick: () => demoteAdmin(klasse.id, m.uid) });
+                actions.push({
+                  key: "demote", icon: ShieldOff, label: "Admin entfernen",
+                  onClick: istIch ? onSelfDemote : () => demoteAdmin(klasse.id, m.uid),
+                });
               }
               if (!istAdmin && !istIch) {
                 actions.push({ key: "ban", icon: UserMinus, label: "Entfernen & sperren", danger: true, onClick: () => onBan(m) });

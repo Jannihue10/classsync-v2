@@ -5,7 +5,7 @@ import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { useKlasse } from "../context/KlasseContext";
 import { useMemberships } from "../context/MembershipsContext";
-import { banFromKlasse, deleteKlasse, leaveKlasse } from "../lib/klasseActions";
+import { banFromKlasse, deleteKlasse, demoteAdmin, leaveKlasse } from "../lib/klasseActions";
 import { PAGE_PAD } from "../styles/theme";
 import TabBar from "../components/ui/TabBar";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
@@ -26,6 +26,7 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
 
   const [tab, setTab] = useState("konto");
   const [banTarget, setBanTarget] = useState(null);
+  const [selfDemoteOpen, setSelfDemoteOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [migrateOpen, setMigrateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -90,7 +91,11 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
       )}
 
       {tab === "mitglieder" && (
-        <MitgliederListe mitglieder={mitglieder} onBan={setBanTarget} />
+        <MitgliederListe
+          mitglieder={mitglieder}
+          onBan={setBanTarget}
+          onSelfDemote={() => setSelfDemoteOpen(true)}
+        />
       )}
 
       {deleteOpen && (
@@ -118,6 +123,16 @@ export default function ProfilPage({ onOpenKurswahl, onOpenAddKlasse }) {
           confirmLabel="Entfernen & sperren"
           onConfirm={() => banFromKlasse(klasse.id, banTarget, kurse)}
           onClose={() => setBanTarget(null)}
+        />
+      )}
+
+      {selfDemoteOpen && (
+        <ConfirmDialog
+          title="Admin-Rechte abgeben?"
+          text={`Du verlierst deine Admin-Rechte für „${klasse.name}". Du kannst dann keine Mitglieder mehr verwalten und die Rechte nicht selbst zurückholen – ein anderer Admin muss dich erneut zum Admin machen.`}
+          confirmLabel="Rechte abgeben"
+          onConfirm={() => demoteAdmin(klasse.id, profile.uid)}
+          onClose={() => setSelfDemoteOpen(false)}
         />
       )}
 
