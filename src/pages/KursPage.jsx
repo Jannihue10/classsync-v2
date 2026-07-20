@@ -14,6 +14,7 @@ import { useKursCollection } from "../lib/useKursCollection";
 import { useIsWide } from "../lib/useMediaQuery";
 import { PAGE_PAD, radius } from "../styles/theme";
 import { Btn, Empty } from "../components/ui/UI";
+import TabBar from "../components/ui/TabBar";
 import KursFormModal from "../components/modals/KursFormModal";
 import KursMitgliederModal from "../components/modals/KursMitgliederModal";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
@@ -136,37 +137,8 @@ export default function KursPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
-        {tabs.map((tabDef) => (
-          <button
-            key={tabDef.id}
-            onClick={() => setTab(tabDef.id)}
-            style={{
-              padding: "8px 14px", borderRadius: radius.full, whiteSpace: "nowrap",
-              border: `1px solid ${tab === tabDef.id ? "transparent" : t.border}`,
-              background: tab === tabDef.id ? t.accent : t.surface,
-              color: tab === tabDef.id ? t.accentText : t.textMuted,
-              fontSize: 13, fontWeight: 600, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 7,
-            }}
-          >
-            <tabDef.icon size={14} strokeWidth={1.8} />
-            {tabDef.label}
-            {tabDef.badge > 0 && (
-              <span
-                style={{
-                  background: tab === tabDef.id ? "rgba(255,255,255,.25)" : t.dangerSoft,
-                  color: tab === tabDef.id ? t.accentText : t.danger,
-                  borderRadius: 999, fontSize: 11, fontWeight: 700, padding: "1px 7px",
-                }}
-              >
-                {tabDef.badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Tabs – Badges rot, weil sie offene HAs/Prüfungen zählen */}
+      <TabBar tabs={tabs} active={tab} onChange={setTab} badgeTone="danger" />
 
       {/* Inhalt */}
       <div style={isWide ? { display: "grid", gridTemplateColumns: "1fr 360px", gap: 18, alignItems: "start" } : undefined}>

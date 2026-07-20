@@ -1,5 +1,5 @@
 # ClassSync – Vollständiges Handoff-Dokument (v2 / „Fable"-Rebuild)
-*Zuletzt aktualisiert: 19. Juli 2026*
+*Zuletzt aktualisiert: 20. Juli 2026*
 
 > Dieses Projekt ist ein **kompletter Neubau** der ursprünglichen ClassSync-App
 > (alter Prototyp: `C:\Users\janni\classsync`). Gleicher Tech-Stack, neues
@@ -140,11 +140,15 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
 - Dashboard mit drei Karten: **offene eigene HAs** (mit Abhak-Checkbox), **kommende Prüfungen** (sortiert nach Nähe, mit Countdown-Pill), **zuletzt geteilte Materialien** (neueste 8) – jeweils mit Kurs-Chip, Klick navigiert zum Kurs
 
 ### Profil
-- Nickname ändern (live via Firestore-Listener), E-Mail-Anzeige (nur für einen selbst) + **„E-Mail ändern"** (`ChangeEmailModal`, s. §9)
-- **„Deine Klassen"-Karte:** alle eigenen Klassen (`MembershipsContext.myClasses`), aktive markiert, „Wechseln" je Klasse, „Klasse hinzufügen" (`AddKlasseModal`); darunter **„Offene Einladungen"** (Migration, `openMigrations`) mit „Beitreten".
-- **Aktive Klasse:** Klassenname + Zugangscode mit **Kopieren-Button**, „Kurse verwalten", „Klasse verlassen" (letzter Admin gesperrt) und für Admins **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`).
-- **Mitgliederliste live** (Query `users where klasseIds array-contains <aktive Klasse>`), Admin-Badge 👑, Promote/Demote-Buttons für Klassen-Admins, Letzter-Admin-Schutz; **Entfernen/Sperren** je Mitglied + **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen)
-- Light/Dark-Toggle, **UI-Größe** (Automatisch/Klein/Normal/Groß, s. §9), Abmelden, ⚠️ **Klassen-Gefahrenzone** (Klasse löschen, nur Admin – mit sichtbarer Fehlermeldung bei Kaskaden-Problemen) und ⚠️ **Konto-Gefahrenzone** („Account löschen", für alle, `DeleteAccountModal`, s. §9)
+**Struktur: drei Pill-Tabs** (`TabBar`, Muster aus dem Kurs-Header). Die Seite war zuvor ein einziger Scroll aus sechs gestapelten Karten und wurde im Juli 2026 aufgeräumt – gleiche Features, neue Gliederung (s. §9 „Profilseite").
+
+| Tab | Inhalt |
+|---|---|
+| **Konto** | Nickname ändern (live via Firestore-Listener) · E-Mail-Anzeige (nur für einen selbst) + **„E-Mail ändern"** (`ChangeEmailModal`, s. §9) · **Design** (Hell/Dunkel als Segmente) · **UI-Größe** (Auto/Klein/Normal/Groß, s. §9) · Abmelden · ⚠️ **Account löschen** (für alle, `DeleteAccountModal`, s. §9) |
+| **Klassen** | **„Deine Klassen"**: alle eigenen Klassen (`MembershipsContext.myClasses`), aktive markiert, „Wechseln" je Klasse, „Klasse hinzufügen" (`AddKlasseModal`); darunter **„Offene Einladungen"** (Migration, `openMigrations`) mit „Beitreten" – die Anzahl liegt als Badge am Tab. **„Aktive Klasse"**: Name + Zugangscode mit **Kopieren-Button**, „Kurse verwalten", „Klasse verlassen" (letzter Admin gesperrt), für Admins **„Ins neue Schuljahr übernehmen"** (`MigrateKlasseModal`). ⚠️ **Klasse löschen** (nur Admin, mit sichtbarer Fehlermeldung bei Kaskaden-Problemen) |
+| **Mitglieder** | **Mitgliederliste live** (Query `users where klasseIds array-contains <aktive Klasse>`), Admin-Badge (Crown), Letzter-Admin-Schutz. Admin-Aktionen (**Zum Admin / Admin entfernen / Entfernen & sperren**) liegen hinter einem **Overflow-Menü** je Zeile, nicht mehr als bis zu drei Buttons nebeneinander. Dazu die **„Gesperrt"-Sektion** zum Entsperren (s. §3 Klassen) |
+
+Beide Gefahrenzonen nutzen dieselbe Komponente (`DangerCard`) und sitzen jeweils unten im passenden Tab – früher waren es zwei fast identische rote Karten am Seitenende.
 
 ### Landingpage (`classsync.de`)
 - `Landing.jsx`: Sticky Nav (Blur), Hero mit Gradient-Headline, Features-Grid (6), 3-Schritte-Sektion, CTA, Footer
@@ -221,6 +225,7 @@ ClassSync Fable/
     ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints, PAGE_PAD, UI_SCALES + **vhScaled/vwScaled** (Viewport-Einheiten gegen den zoom) und **safeInset/safePad/safeExtra** (Safe-Area, s. §9)
     ├── components/
     │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, CloseButton, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card, LogoMark
+    │   ├── ui/TabBar.jsx           ← **NEU**: Pill-Tabs ({id,label,icon,badge}) + badgeTone="danger|neutral"; genutzt von KursPage **und** ProfilPage
     │   ├── ui/CourseAvatar.jsx     ← farbiges Kurs-Monogramm (ersetzt Emoji-Icons)
     │   ├── ui/DateiIcon.jsx        ← PDF/Bild/Notiz-Icon (Lucide)
     │   ├── layout/
@@ -247,6 +252,13 @@ ClassSync Fable/
     │   │   ├── SammlungDetailModal.jsx ← Sammlung öffnen: Material-Grid, entfernen, umbenennen, teilen, löschen/verlassen
     │   │   ├── AddToSammlungModal.jsx  ← Material zu Sammlung(en) hinzufügen/entfernen + „Neue Sammlung"
     │   │   └── ShareSammlungModal.jsx  ← Klassenmitglieder für Freigabe an-/abwählen
+    │   ├── profil/                 ← **NEU** (Juli 2026): Bausteine der Profilseite, s. §9 „Profilseite"
+    │   │   ├── SettingRow.jsx      ← Einstellungszeile (Label+Hinweis links, Control rechts) + SegmentedControl (Design, UI-Größe)
+    │   │   ├── KontoTab.jsx        ← Tab „Konto": Nickname-Form, E-Mail, Design, UI-Größe, Abmelden, Account-Gefahrenzone
+    │   │   ├── KlassenListe.jsx    ← myClasses-Wechsler + „Offene Einladungen" (acceptMigration)
+    │   │   ├── AktiveKlasseCard.jsx ← Name, Mitgliederzahl, Code-Kopierbutton, Kurse verwalten, Migration, Verlassen
+    │   │   ├── MitgliederListe.jsx ← Mitglieder + Gesperrt-Sektion; Admin-Aktionen im MoreVertical-Overflow-Menü
+    │   │   └── DangerCard.jsx      ← eine rote Karte (title/text/buttonLabel/onClick/error) für Klasse **und** Account löschen
     │   └── modals/
     │       ├── KurswahlModal.jsx   ← Toggle-Karten, Suche, Alle (ab)wählen, memberIds-Diff
     │       ├── KursMitgliederModal.jsx ← Kurs-Mitgliederliste (uid→Nickname via users-Query `klasseIds array-contains`), Entfernen für Kurs-/Klassen-Admins
@@ -267,7 +279,7 @@ ClassSync Fable/
         ├── BibliothekPage.jsx      ← /bibliothek – kursübergreifende Materialsicht (Filter) + Sammlungen-Tab
         ├── KursPage.jsx            ← /kurs/:kursId – Header (inkl. Mitglieder-Button), Tabs, MaterialGrid, HA/Prüfungen/Chat
         ├── KalenderPage.jsx        ← /kalender (Woche/Monat; Stundenplan integriert)
-        └── ProfilPage.jsx          ← /profil – Nickname, **E-Mail ändern**, **Deine Klassen** (Wechsel/Hinzufügen/Einladungen), aktive Klasse/Code, Mitglieder-Moderation, **Migration starten**, Klassen-Gefahrenzone (Admin) + **Konto-Gefahrenzone „Account löschen" (für alle)**
+        └── ProfilPage.jsx          ← /profil – schlanker Container: Tab-State (Konto/Klassen/Mitglieder), der `mitglieder`-Listener und **alle** Modals/ConfirmDialogs. Der sichtbare Inhalt liegt in `components/profil/`
 ```
 
 **Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen). `test-resend.mjs` — lokaler Auth-Mail-Test (`verify|reset|changeEmail`) über Admin-SDK + Resend ohne Deploy (s. §9 E-Mail-Adresse ändern).
@@ -515,7 +527,7 @@ Gemessen (physische px): iPad-Kopf 42 → 24, iPad-Hauptbereich 44 → 24, iPhon
   4. `deleteDoc(users/{uid})` (Rule erlaubt Selbst-Löschen).
   5. `user.delete()` **zuletzt** – danach hat der Client keine Firestore-Rechte mehr, **Reihenfolge ist zwingend**. Bei Erfolg räumt Firebase die Session ab → das Auth-Gate rendert automatisch den Login (kein manuelles Routing).
 - **Geteilte Inhalte bleiben** (Materialien, HAs, Prüfungen, Chat, eigene Sammlungen) mit denormalisiertem Nickname erhalten.
-- **Erreichbarkeit für ALLE:** Button in der **Konto-Gefahrenzone** der `ProfilPage` (getrennt von der Admin-only Klassen-Gefahrenzone) **und** im **Onboarding** („Konto löschen"), damit auch **klassenlose** Nutzer löschen können (das Gate zeigt bei `klasseIds`-leer nur das Onboarding). Deshalb bekommt `DeleteAccountModal` `myClasses` als **Prop** (nicht aus `useMemberships`) – im Onboarding gibt es keinen `MembershipsProvider`; dort ist `myClasses={[]}`.
+- **Erreichbarkeit für ALLE:** Button in der Gefahrenzone am Ende des **Konto-Tabs** der `ProfilPage` (getrennt vom Admin-only „Klasse löschen" im Klassen-Tab; beide nutzen dieselbe `DangerCard`) **und** im **Onboarding** („Konto löschen"), damit auch **klassenlose** Nutzer löschen können (das Gate zeigt bei `klasseIds`-leer nur das Onboarding). Deshalb bekommt `DeleteAccountModal` `myClasses` als **Prop** (nicht aus `useMemberships`) – im Onboarding gibt es keinen `MembershipsProvider`; dort ist `myClasses={[]}`.
 - **Rule-Änderung:** `users` `allow delete: if isAuth() && uid()==userId` (war `false`).
 
 ### DSGVO-Voll-Wipe (geplant – Anleitung zum Umbau)
@@ -587,12 +599,12 @@ updateDoc(kursRef, { memberIds: join ? arrayUnion(uid) : arrayRemove(uid) });
 ### Rauswurf bei gelöschter/gesperrter Klasse (Multi-Klassen)
 `MembershipsContext` beobachtet **alle** eigenen Klassen-Docs; existiert eines nicht mehr **oder** steht die eigene uid in dessen `bannedIds` → `updateProfile({ klasseIds: arrayRemove(id), activeKlasseId: … })`. Betrifft es die aktive Klasse, greift danach eine verbleibende oder das Onboarding. Funktioniert live für alle eingeloggten Mitglieder. (Der `KlasseContext` setzt für die **aktive** Klasse nur noch `klasse=null`; die Eviction liegt zentral im MembershipsContext.)
 
-### Mitglieder-Moderation (`lib/klasseActions.js`, `ProfilPage`, `KursMitgliederModal`)
+### Mitglieder-Moderation (`lib/klasseActions.js`, `components/profil/MitgliederListe.jsx`, `KursMitgliederModal`)
 - **Warum `bannedIds` am Klassen-Doc statt Schreiben ins fremde User-Doc?** Die `users`-Rules erlauben nur das Bearbeiten des *eigenen* Docs – ein Admin kann die `klasseIds` fremder User gar nicht ändern. Also editiert der Admin nur das Klassen-Doc (`banFromKlasse`: uid in `bannedIds`, raus aus `adminIds` + allen `memberIds`, Nickname in `bannedInfo`), und der Betroffene wirft sich per `MembershipsContext`-Listener selbst raus – dasselbe Muster wie beim Klassen-Löschen (und, invertiert, bei der Migration).
 - **Rejoin-Sperre doppelt:** serverseitig über die `users`-Update-Rule (Ban-Check auf die neu hinzukommende `activeKlasseId` per Set-`difference`) **und** clientseitig als Pre-Check in `joinByCode`/`acceptMigration` **vor** dem `updateDoc`. Der Client-Check ist nötig für die UX: ein direkter Write würde erst **optimistisch lokal** angewendet → kurzer Render → Server-Rollback **ohne** Fehlermeldung. Der Pre-Check wirft vorher eine klare Meldung.
 - **`leaveKlasse(klasseId, uid, kurse, isAdmin, klasseIds, activeKlasseId)`:** raus aus allen eigenen Kursen, dann (nur wenn `isAdmin`) aus `adminIds`, zuletzt `klasseIds: arrayRemove(klasseId)` + `activeKlasseId` auf eine verbleibende/null. Der `isAdmin`-Guard ist Pflicht – ein Nicht-Admin darf das Klassen-Doc nicht schreiben, sonst würde der `adminIds`-Write mit permission-denied den User-Write verhindern. *Nur die aktive Klasse verlassbar (kurse-Liste geladen).*
 - **Kurs-Entfernen** braucht keine eigene Funktion/Rule: `setKursMembership(…, false)` mit fremder uid; die `kurse`-Update-Rule erlaubt Admin/Ersteller bereits jede `memberIds`-Änderung.
-- Gesperrte, die sich noch nicht selbst evictet haben, matchen weiter die Mitglieder-Query (`klasseIds array-contains`) → in `ProfilPage` **ausgegraut mit „Gesperrt"-Tag**. Kurs-Modal ist nicht betroffen (uid schon aus `memberIds` entfernt).
+- Gesperrte, die sich noch nicht selbst evictet haben, matchen weiter die Mitglieder-Query (`klasseIds array-contains`) → in `MitgliederListe` **ausgegraut/durchgestrichen mit „Gesperrt"-Tag** (und ohne Aktionsmenü). Kurs-Modal ist nicht betroffen (uid schon aus `memberIds` entfernt).
 
 ### Benachrichtigungen (`NotificationContext`)
 Pro eigenem Kurs ein `onSnapshot` auf `materialien`; nur `docChanges().type=="added"`, Dedupe über `seenIds`-Ref, Filter `ts > lastSeen` und `autorId !== uid`. `markAllRead()` setzt `classsync_lastSeen_{uid}` = jetzt und leert die Liste. `createdAt` von `serverTimestamp` kann beim lokalen Echo noch null sein → Fallback `Date.now()`.
@@ -608,6 +620,19 @@ const minToPx = min => INNER_PAD + (min - DAY_START) * PX_PER_MIN;
 
 ### Upload (`UploadModal.jsx`)
 `MAX_MB = 10` (Client-Check; Storage-Rules erzwingen es serverseitig nochmal). Ohne Datei + mit Beschreibung → `dateiTyp: "Notiz"`. `storagePath = klassen/{kId}/kurse/{kursId}/{Date.now()}_{file.name}`.
+
+### Profilseite (Tab-Struktur, `components/profil/`)
+Die Seite war bis Juli 2026 **508 Zeilen in einer Datei**: sechs gestapelte Karten, ein sehr langer Scroll. Sie ist so gewachsen, weil E-Mail-Wechsel, Multi-Klassen, Migrations-Einladungen, Ban/Unban, UI-Skalierung und Account-Löschen nacheinander dazukamen und jeweils an der nächstbesten Stelle angehängt wurden. Umbau: **gleiche Features und Buttons, neue Gliederung** – keine Verhaltens-, Firestore- oder Rules-Änderung.
+
+- **`ProfilPage.jsx` ist nur noch Container** (~150 Zeilen): Tab-State, der `mitglieder`-Listener und **alle** Modals/ConfirmDialogs. Alles Sichtbare liegt in `components/profil/`. Bei neuen Profil-Features: **Baustein dort anlegen, nicht die Seite verlängern.**
+- **Tabs:** `konto` (default) / `klassen` / `mitglieder`, lokaler `useState` – **kein Routing**, die Seite hat keine tiefen Links. Das Einladungs-Badge am Klassen-Tab kommt aus `openMigrations.length` und bleibt neutral (`badgeTone`-Default); rot ist im Kurs den offenen HAs/Prüfungen vorbehalten.
+- **Konventionen, die den Umbau tragen** (beim Erweitern beibehalten):
+  - Eine *primäre* Aktion pro Karte gehört in `SectionTitle action=`. Alles andere in eine `SettingRow` oder eine Button-Reihe am Kartenfuß – **keine Buttons frei hinter einem `<Divider/>` im Fließtext**, das war die Hauptquelle der Unordnung.
+  - Auswahlen mit festen Optionen (Design, UI-Größe) als `SegmentedControl`, nicht als Button-Reihe. Der Design-Toggle zeigt deshalb `Hell`/`Dunkel` mit aktiver Markierung statt eines Buttons, dessen Label die *Gegen*aktion nennt.
+  - Unwiderrufliche Aktionen immer über `DangerCard` (eine Komponente, pro Tab kontextuell gerendert) – nicht als weitere rote Karte am Seitenende.
+  - Warntexte **kurz halten**: der vollständige Wortlaut steht ohnehin im `ConfirmDialog`/`DeleteAccountModal`. Ausnahme: der Letzter-Admin-Hinweis bleibt inline, weil er eine *Sperre* erklärt und nicht nur warnt.
+- **Overflow-Menü in `MitgliederListe`:** Admin-Aktionen (Zum Admin / Admin entfernen / Entfernen & sperren) liegen hinter `MoreVertical` statt als bis zu drei Buttons je Zeile. Gebaut nach dem Muster aus `ChatPanel.jsx` (absolutes Popover, Schließen per Außenklick + Escape). Die Sichtbarkeits-Bedingungen sind unverändert; die Zeile für den **letzten Admin** bekommt kein Menü, sondern weiterhin den Text „letzter Admin".
+- Die Seite ist **kein Vollbild-Overlay** → keine eigene Safe-Area-Behandlung, der `PAGE_PAD`-Container reicht.
 
 ### Responsive-Verhalten
 - `< 768px`: Sidebar als Overlay-Drawer (Hamburger in mobiler TopBar), schließt bei Navigation
@@ -718,6 +743,7 @@ Material-Typ-Farben (`MAT_COLORS`): Mitschrift #6366f1 · Aufgabenblatt #f59e0b 
 - `<Empty icon={LucideIcon} text sub action>` – icon nimmt eine Lucide-Komponente (oder fertiges Element)
 - `<CloseButton onClick>` – einheitlicher Schließen-Button (X)
 - `<LogoMark size>` – flaches Logo-Mark (GraduationCap auf Akzent-Quadrat)
+- `<TabBar tabs={[{id,label,icon,badge}]} active onChange badgeTone>` (eigene Datei) – Pill-Tabs, genutzt von `KursPage` und `ProfilPage`. **`badgeTone="danger"`** färbt den Zähler rot („da liegt was an": offene HAs/Prüfungen im Kurs), Default **`"neutral"`** ist eine reine Anzahl (offene Einladungen im Profil). Neue Tab-Leisten hier anschließen, nicht neu bauen
 - `<CourseAvatar name farbe size radius>` (eigene Datei) – Kurs-Monogramm
 - `<DateiIcon typ size color>` (eigene Datei) – PDF/Bild/Notiz-Icon
 
