@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Megaphone } from "lucide-react";
 import { useKlasse } from "../context/KlasseContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAnkuendigungen } from "../context/AnkuendigungenContext";
 import { useAcrossKurse } from "../lib/useAcrossKurse";
 import { dateToISO, getKW, mondayOf, parseDatum } from "../lib/dates";
 import { PAGE_PAD, radius, vhScaled } from "../styles/theme";
@@ -17,6 +18,8 @@ export default function KalenderPage() {
   const { t } = useTheme();
   const { meineKurse } = useKlasse();
   const pruefungen = useAcrossKurse("pruefungen");
+  // Termine aus Ankündigungen: klassenweit, deshalb aus dem Context statt useAcrossKurse
+  const { termineByISO } = useAnkuendigungen();
   const [view, setView] = useState("woche"); // "woche" | "monat"
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -91,7 +94,12 @@ export default function KalenderPage() {
               borderRadius: 14, overflow: "auto", maxHeight: `calc(${vhScaled(100)} - 220px)`,
             }}
           >
-            <WeekGrid kurse={meineKurse} dates={weekDates} pruefungenByISO={pruefungenByISO} />
+            <WeekGrid
+              kurse={meineKurse}
+              dates={weekDates}
+              pruefungenByISO={pruefungenByISO}
+              termineByISO={termineByISO}
+            />
           </div>
         </>
       ) : (
@@ -99,6 +107,7 @@ export default function KalenderPage() {
           cursor={monthCursor}
           setCursor={setMonthCursor}
           pruefungenByISO={pruefungenByISO}
+          termineByISO={termineByISO}
           navBtnStyle={navBtnStyle}
         />
       )}
@@ -106,7 +115,7 @@ export default function KalenderPage() {
   );
 }
 
-function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
+function MonatsView({ cursor, setCursor, pruefungenByISO, termineByISO, navBtnStyle }) {
   const { t } = useTheme();
 
   function shift(delta) {
@@ -146,6 +155,17 @@ function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
     }
     return [...map.entries()];
   }, [pruefungenByISO, cursor]);
+
+  // Liegt in diesem Monat ein Ankündigungs-Termin? Dann die Legende ergänzen.
+  const hatTermine = useMemo(
+    () =>
+      Object.entries(termineByISO || {}).some(([iso, tms]) => {
+        if (tms.length === 0) return false;
+        const d = new Date(iso);
+        return d.getFullYear() === cursor.year && d.getMonth() === cursor.month;
+      }),
+    [termineByISO, cursor]
+  );
 
   return (
     <>
@@ -205,6 +225,7 @@ function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
                 const imMonat = day.getMonth() === cursor.month;
                 const istHeute = iso === heuteISO;
                 const prs = pruefungenByISO[iso] || [];
+                const tms = termineByISO?.[iso] || [];
                 return (
                   <div
                     key={iso}
@@ -238,6 +259,22 @@ function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
                           {pr.titel}
                         </div>
                       ))}
+                      {tms.map((tm) => (
+                        <div
+                          key={`ank-${tm.id}`}
+                          title={tm.zeit ? `${tm.titel} · ${tm.zeit} Uhr` : tm.titel}
+                          style={{
+                            fontSize: 10.5, fontWeight: 700, color: t.accent,
+                            background: t.accentSoft, border: `1px solid ${t.accent}55`,
+                            borderRadius: 5, padding: "2px 6px",
+                            display: "flex", alignItems: "center", gap: 4,
+                            overflow: "hidden", whiteSpace: "nowrap",
+                          }}
+                        >
+                          <Megaphone size={10} strokeWidth={2} style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tm.titel}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
@@ -247,7 +284,7 @@ function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
         </div>
       </div>
 
-      {legende.length > 0 && (
+      {(legende.length > 0 || hatTermine) && (
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 12, padding: "0 4px" }}>
           {legende.map(([name, farbe]) => (
             <span key={name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.textMuted, fontWeight: 600 }}>
@@ -255,6 +292,12 @@ function MonatsView({ cursor, setCursor, pruefungenByISO, navBtnStyle }) {
               {name}
             </span>
           ))}
+          {hatTermine && (
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.textMuted, fontWeight: 600 }}>
+              <Megaphone size={12} strokeWidth={2} color={t.accent} />
+              Ankündigung
+            </span>
+          )}
         </div>
       )}
     </>

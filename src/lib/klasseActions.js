@@ -234,8 +234,18 @@ export async function deleteKlasse(klasseId) {
   for (const kurs of kurseSnap.docs) {
     await deleteKurs(klasseId, kurs.id);
   }
-  // Sammlungen (Klassenebene) aufräumen – vor dem Klassen-Doc (Rules lesen es per get())
+  // Anhänge der Ankündigungen liegen auf Klassenebene (nicht unter einem Kurs)
+  try {
+    const folder = storageRef(storage, `klassen/${klasseId}/ankuendigungen`);
+    const files = await listAll(folder);
+    await Promise.all(files.items.map((f) => deleteObject(f).catch(() => {})));
+  } catch {
+    // Ordner existiert evtl. nicht – ignorieren
+  }
+  // Sammlungen + Ankündigungen (Klassenebene) aufräumen – vor dem Klassen-Doc
+  // (die Rules lesen es per get(), um den Admin zu prüfen)
   await deleteSubcollection(["klassen", klasseId, "sammlungen"]);
+  await deleteSubcollection(["klassen", klasseId, "ankuendigungen"]);
   try {
     await deleteDoc(doc(db, "klassen", klasseId));
   } catch (e) {

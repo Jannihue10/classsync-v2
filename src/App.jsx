@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { MembershipsProvider } from "./context/MembershipsContext";
 import { KlasseProvider, useKlasse } from "./context/KlasseContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { AnkuendigungenProvider } from "./context/AnkuendigungenContext";
 import { useTheme } from "./context/ThemeContext";
 import { vhScaled } from "./styles/theme";
 import { Spinner } from "./components/ui/UI";
@@ -72,7 +73,9 @@ function KlasseGate() {
   if (loading || !klasse) return <FullSpinner />;
   return (
     <NotificationProvider>
-      <AppShell />
+      <AnkuendigungenProvider>
+        <AppShell />
+      </AnkuendigungenProvider>
     </NotificationProvider>
   );
 }

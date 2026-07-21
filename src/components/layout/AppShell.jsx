@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useAnkuendigungen } from "../../context/AnkuendigungenContext";
 import { useIsMobile } from "../../lib/useMediaQuery";
 import { PAGE_PAD, safeExtra, safePad, vhScaled } from "../../styles/theme";
 import { KURSWAHL_FLAG } from "../../pages/Onboarding";
@@ -11,9 +12,12 @@ import MigrationBanner from "./MigrationBanner";
 import KurswahlModal from "../modals/KurswahlModal";
 import KursFormModal from "../modals/KursFormModal";
 import AddKlasseModal from "../modals/AddKlasseModal";
+import AnkuendigungFormModal from "../ankuendigungen/AnkuendigungFormModal";
+import AnkuendigungPopup from "../ankuendigungen/AnkuendigungPopup";
 import { Bell, Menu } from "lucide-react";
 import { IconButton, LogoMark } from "../ui/UI";
 import UebersichtPage from "../../pages/UebersichtPage";
+import AnkuendigungenPage from "../../pages/AnkuendigungenPage";
 import BibliothekPage from "../../pages/BibliothekPage";
 import KalenderPage from "../../pages/KalenderPage";
 import KursPage from "../../pages/KursPage";
@@ -23,12 +27,18 @@ export default function AppShell() {
   const { t } = useTheme();
   const isMobile = useIsMobile();
   const { unreadCount } = useNotifications();
+  const { ungelesene } = useAnkuendigungen();
   const location = useLocation();
+
+  // Die Glocke bündelt beides: neue Materialien (localStorage-lastSeen) und
+  // ungelesene Ankündigungen (serverseitiges gelesenVon).
+  const glockenBadge = unreadCount + ungelesene.length;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [kursFormOpen, setKursFormOpen] = useState(false);
   const [addKlasseOpen, setAddKlasseOpen] = useState(false);
+  const [ankFormOpen, setAnkFormOpen] = useState(false);
   const [kurswahlOpen, setKurswahlOpen] = useState(
     () => sessionStorage.getItem(KURSWAHL_FLAG) === "1"
   );
@@ -46,6 +56,7 @@ export default function AppShell() {
     onOpenKurswahl: () => { setKurswahlOpen(true); setDrawerOpen(false); },
     onOpenAddKlasse: () => { setAddKlasseOpen(true); setDrawerOpen(false); },
     onOpenNotifications: () => { setNotifOpen(true); setDrawerOpen(false); },
+    glockenBadge,
   };
 
   return (
@@ -83,7 +94,7 @@ export default function AppShell() {
               <LogoMark size={24} />
               <span style={{ fontWeight: 700, fontSize: 15, color: t.text }}>ClassSync</span>
             </span>
-            <IconButton title="Benachrichtigungen" badge={unreadCount} onClick={() => setNotifOpen(true)}>
+            <IconButton title="Benachrichtigungen" badge={glockenBadge} onClick={() => setNotifOpen(true)}>
               <Bell size={17} strokeWidth={1.8} />
             </IconButton>
           </header>
@@ -104,6 +115,10 @@ export default function AppShell() {
           <MigrationBanner />
           <Routes>
             <Route path="/" element={<UebersichtPage />} />
+            <Route
+              path="/ankuendigungen"
+              element={<AnkuendigungenPage onOpenForm={() => setAnkFormOpen(true)} />}
+            />
             <Route path="/bibliothek" element={<BibliothekPage />} />
             <Route path="/kalender" element={<KalenderPage />} />
             {/* Alter Menüpunkt zusammengelegt – Bookmarks weiterleiten */}
@@ -119,6 +134,10 @@ export default function AppShell() {
       {kurswahlOpen && <KurswahlModal onClose={() => setKurswahlOpen(false)} />}
       {kursFormOpen && <KursFormModal onClose={() => setKursFormOpen(false)} />}
       {addKlasseOpen && <AddKlasseModal onClose={() => setAddKlasseOpen(false)} />}
+      {ankFormOpen && <AnkuendigungFormModal onClose={() => setAnkFormOpen(false)} />}
+
+      {/* Ungelesene Ankündigungen beim App-Start – rendert sich selbst weg, wenn keine da sind */}
+      <AnkuendigungPopup />
     </div>
   );
 }

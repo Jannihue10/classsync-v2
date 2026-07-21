@@ -175,6 +175,27 @@ service cloud.firestore {
           resource.data.ownerId == uid() || isKlassenAdmin(klasseId)
         );
       }
+
+      // Ankündigungen: klassenweiter Broadcast der Klassen-Admins.
+      // read = jedes Klassenmitglied. kursIds ist ein ZIELGRUPPEN-Filter, keine
+      // Zugriffsschranke – dieselbe Linie wie materialien/chat, die ebenfalls jedes
+      // Klassenmitglied lesen darf und erst in der UI nach Kursmitgliedschaft gefiltert
+      // werden. Eine echte Rules-Prüfung bräuchte einen get() je Kurs.
+      match /ankuendigungen/{ankId} {
+        allow read: if isMember(klasseId);
+        allow create: if isKlassenAdmin(klasseId) &&
+          request.resource.data.autorId == uid();
+        // gelesenVon darf jedes Mitglied quittieren (Muster: likes/doneBy),
+        // alles andere nur der Klassen-Admin.
+        allow update: if isMember(klasseId) && (
+          isKlassenAdmin(klasseId) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gelesenVon'])
+        );
+        // Klassen-Admin löscht manuell; zusätzlich nötig für die Lösch-Kaskade.
+        // Die Ablauf-Löschung nach 90 Tagen macht das Admin-SDK (api/purge-ankuendigungen.js)
+        // und umgeht diese Regeln ohnehin.
+        allow delete: if isKlassenAdmin(klasseId);
+      }
     }
   }
 }

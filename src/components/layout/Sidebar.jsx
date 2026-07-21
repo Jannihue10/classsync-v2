@@ -1,22 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, Calendar, Check, ChevronDown, LayoutGrid, Library, Plus, Settings2 } from "lucide-react";
+import { Bell, Calendar, Check, ChevronDown, LayoutGrid, Library, Megaphone, Plus, Settings2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useKlasse } from "../../context/KlasseContext";
 import { useMemberships } from "../../context/MembershipsContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useAnkuendigungen } from "../../context/AnkuendigungenContext";
 import { useTheme } from "../../context/ThemeContext";
 import { switchActiveKlasse } from "../../lib/klasseActions";
 import { SIDEBAR_WIDTH, radius, safeExtra, safePad } from "../../styles/theme";
 import { IconButton, LogoMark } from "../ui/UI";
 import CourseAvatar from "../ui/CourseAvatar";
 
-export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, onOpenNotifications, onOpenAddKlasse }) {
+export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, onOpenNotifications, onOpenAddKlasse, glockenBadge }) {
   const { t } = useTheme();
   const { profile } = useAuth();
   const { klasse, meineKurse } = useKlasse();
   const { myClasses } = useMemberships();
   const { unreadCount } = useNotifications();
+  const { ungelesene } = useAnkuendigungen();
   const navigate = useNavigate();
 
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -152,6 +154,21 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
         <NavLink to="/" end style={navItemStyle} onClick={onNavigate}>
           <LayoutGrid size={16} strokeWidth={1.8} /> Übersicht
         </NavLink>
+        <NavLink to="/ankuendigungen" style={navItemStyle} onClick={onNavigate}>
+          <Megaphone size={16} strokeWidth={1.8} />
+          <span style={{ flex: 1 }}>Ankündigungen</span>
+          {ungelesene.length > 0 && (
+            <span
+              style={{
+                background: t.accent, color: t.accentText, borderRadius: 999,
+                fontSize: 10.5, fontWeight: 700, minWidth: 17, height: 17, padding: "0 5px",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+              }}
+            >
+              {ungelesene.length > 99 ? "99+" : ungelesene.length}
+            </span>
+          )}
+        </NavLink>
         <NavLink to="/bibliothek" style={navItemStyle} onClick={onNavigate}>
           <Library size={16} strokeWidth={1.8} /> Bibliothek
         </NavLink>
@@ -247,7 +264,7 @@ export default function Sidebar({ onNavigate, onOpenKursForm, onOpenKurswahl, on
             {profile?.nickname}
           </span>
         </button>
-        <IconButton title="Benachrichtigungen" badge={unreadCount} onClick={onOpenNotifications}>
+        <IconButton title="Benachrichtigungen" badge={glockenBadge ?? unreadCount} onClick={onOpenNotifications}>
           <Bell size={17} strokeWidth={1.8} />
         </IconButton>
       </div>

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Megaphone } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { WOCHENTAGE, timeToMin, dateToISO } from "../../lib/dates";
 import { radius } from "../../styles/theme";
@@ -11,7 +12,9 @@ const TIME_COL = 52;
 // Nur das Raster scrollt (Eltern-Container), die Tages-Header bleiben über sticky fixiert.
 // dates: optional 5 Date-Objekte (Kalender-Modus mit Datum + Heute-Highlight)
 // pruefungenByISO: optional { "YYYY-MM-DD": [{id, titel, farbe}] }
-export default function WeekGrid({ kurse, dates, pruefungenByISO }) {
+// termineByISO: optional { "YYYY-MM-DD": [{id, titel, zeit}] } – Termine aus Ankündigungen.
+//   Akzentfarbe statt Kursfarbe, weil sie der Klasse gehören und nicht einem Kurs.
+export default function WeekGrid({ kurse, dates, pruefungenByISO, termineByISO }) {
   const { t } = useTheme();
   const navigate = useNavigate();
 
@@ -60,6 +63,7 @@ export default function WeekGrid({ kurse, dates, pruefungenByISO }) {
           const iso = date ? dateToISO(date) : null;
           const istHeute = iso === heuteISO;
           const pruefungen = (iso && pruefungenByISO?.[iso]) || [];
+          const termine = (iso && termineByISO?.[iso]) || [];
           return (
             <div key={tag} style={{ padding: "8px 6px", textAlign: "center" }}>
               <div
@@ -94,6 +98,22 @@ export default function WeekGrid({ kurse, dates, pruefungenByISO }) {
                   }}
                 >
                   {pr.titel}
+                </div>
+              ))}
+              {termine.map((tm) => (
+                <div
+                  key={`ank-${tm.id}`}
+                  title={tm.zeit ? `${tm.titel} · ${tm.zeit} Uhr` : tm.titel}
+                  style={{
+                    marginTop: 3, fontSize: 10.5, fontWeight: 700, color: t.accent,
+                    background: t.accentSoft, border: `1px solid ${t.accent}55`,
+                    borderRadius: 5, padding: "2px 6px",
+                    display: "flex", alignItems: "center", gap: 4,
+                    overflow: "hidden", whiteSpace: "nowrap",
+                  }}
+                >
+                  <Megaphone size={10} strokeWidth={2} style={{ flexShrink: 0 }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tm.titel}</span>
                 </div>
               ))}
             </div>

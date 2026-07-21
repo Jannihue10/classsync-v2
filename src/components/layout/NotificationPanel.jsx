@@ -1,17 +1,34 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCircle2 } from "lucide-react";
+import { Bell, Check, CheckCircle2, Megaphone } from "lucide-react";
 import { useNotifications } from "../../context/NotificationContext";
+import { useAnkuendigungen } from "../../context/AnkuendigungenContext";
 import { useTheme } from "../../context/ThemeContext";
 import { MAT_COLORS } from "../../lib/faecher";
 import { relativeTime } from "../../lib/dates";
 import { radius, safeExtra, safePad, vwScaled } from "../../styles/theme";
 import { Btn, CloseButton, Empty, Tag } from "../ui/UI";
+import AnkuendigungCard from "../ankuendigungen/AnkuendigungCard";
+import AnkuendigungModal from "../ankuendigungen/AnkuendigungModal";
 
-// Slide-over von rechts: neue Materialien gruppiert nach Kurs
+// Wie viele Ankündigungen im Panel stehen – der Rest liegt auf /ankuendigungen.
+const ANK_LIMIT = 5;
+
+// Slide-over von rechts: Ankündigungen der Klasse + neue Materialien gruppiert nach Kurs
 export default function NotificationPanel({ onClose }) {
   const { t } = useTheme();
   const { grouped, unreadCount, markAllRead } = useNotifications();
+  const { alle: ankuendigungen, ungelesene } = useAnkuendigungen();
   const navigate = useNavigate();
+  // Nur die ID merken und live auflösen (s. AnkuendigungenPage)
+  const [offenId, setOffenId] = useState(null);
+  const offen = ankuendigungen.find((a) => a.id === offenId) || null;
+
+  const ankListe = ankuendigungen.slice(0, ANK_LIMIT);
+  // Badge im Kopf zählt beides; „Alle gelesen" unten betrifft weiterhin nur Materialien,
+  // Ankündigungen quittiert man einzeln (serverseitiges gelesenVon).
+  const badge = unreadCount + ungelesene.length;
+  const leer = grouped.length === 0 && ankListe.length === 0;
 
   return (
     <div
@@ -39,14 +56,14 @@ export default function NotificationPanel({ onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <Bell size={16} strokeWidth={1.8} color={t.textMuted} />
             <h2 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: t.text }}>Neu für dich</h2>
-            {unreadCount > 0 && (
+            {badge > 0 && (
               <span
                 style={{
                   background: t.danger, color: "#fff", borderRadius: 999,
                   fontSize: 11, fontWeight: 700, padding: "1px 7px",
                 }}
               >
-                {unreadCount}
+                {badge}
               </span>
             )}
           </div>
@@ -61,7 +78,33 @@ export default function NotificationPanel({ onClose }) {
             paddingBottom: unreadCount > 0 ? 14 : safePad("bottom", 14),
           }}
         >
-          {grouped.length === 0 ? (
+          {/* Ankündigungen bleiben stehen, auch wenn sie schon quittiert sind */}
+          {ankListe.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, padding: "0 2px" }}>
+                <Megaphone size={13} strokeWidth={1.8} color={t.accent} />
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: t.text }}>Ankündigungen</span>
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {ankListe.map((ank) => (
+                  <AnkuendigungCard key={ank.id} ank={ank} compact onClick={() => setOffenId(ank.id)} />
+                ))}
+              </div>
+              {ankuendigungen.length > ANK_LIMIT && (
+                <button
+                  onClick={() => { navigate("/ankuendigungen"); onClose(); }}
+                  style={{
+                    marginTop: 7, background: "none", border: "none", padding: "2px 2px",
+                    color: t.accent, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  Alle anzeigen
+                </button>
+              )}
+            </div>
+          )}
+
+          {leer ? (
             <Empty icon={CheckCircle2} text="Alles gelesen" sub="Neue Materialien deiner Kurse tauchen hier auf." />
           ) : (
             grouped.map((gruppe) => (
@@ -104,6 +147,8 @@ export default function NotificationPanel({ onClose }) {
           </div>
         )}
       </div>
+
+      {offen && <AnkuendigungModal ank={offen} onClose={() => setOffenId(null)} />}
     </div>
   );
 }

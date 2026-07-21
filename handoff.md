@@ -1,5 +1,5 @@
 # ClassSync – Vollständiges Handoff-Dokument (v2 / „Fable"-Rebuild)
-*Zuletzt aktualisiert: 20. Juli 2026*
+*Zuletzt aktualisiert: 21. Juli 2026*
 
 > Dieses Projekt ist ein **kompletter Neubau** der ursprünglichen ClassSync-App
 > (alter Prototyp: `C:\Users\janni\classsync`). Gleicher Tech-Stack, neues
@@ -34,6 +34,7 @@
 | **Domains** | `classsync.de` + `app.classsync.de` → Vercel-Projekt `classsync-v2` (vom alten Vercel-Projekt entfernt). DNS/Nameserver: IONOS → Vercel |
 
 **Hinweise:**
+- **Vercel-Cron + `CRON_SECRET` (Juli 2026):** `vercel.json` enthält einen täglichen Cron-Eintrag auf `/api/purge-ankuendigungen` (3:00 Uhr). Vercel schickt dabei automatisch `Authorization: Bearer $CRON_SECRET`; der Endpoint lehnt alles andere mit **401** ab. Die Env-Var **`CRON_SECRET`** muss im Vercel-Projekt gesetzt sein (unpräfixiert), sonst antwortet der Endpoint `500 server-not-configured`. Für lokale Tests dieselbe Variable in `.env.local`. Der Cron greift erst **nach einem Deploy** – `vercel.json`-Änderungen werden beim nächsten Push gelesen. S. §9 „Ankündigungen".
 - Deployment Protection („Vercel Authentication") wurde für das Projekt deaktiviert, sonst wäre die Seite nicht öffentlich.
 - **GitHub↔Vercel Auto-Deploy ist aktiv** (bestätigt 17. Juli 2026): Push auf `main` → Production, Branch-Push → Preview. **Preview-Deployments sind per „Vercel Authentication" (SSO) geschützt** (Settings → Deployment Protection) – für anonyme curl-Tests der Preview muss die Protection kurz deaktiviert werden; Production ist öffentlich.
 - In Firebase **Authentication** existieren noch Test-Accounts aus E2E-Tests, die gelöscht werden können: `classsync.test.a@testmail.de`, `classsync.test.b@testmail.de` (leere `users`-Dokumente) sowie `classsync.test.verify@testmail.de` (aus dem Verifizierungs-Test – unverifiziert, mit `users`-Doc; per Client-Rules nicht löschbar → in der Console entfernen).
@@ -129,16 +130,30 @@ Ein Klassen-Admin kann am Schuljahresende „die ganze Klasse in eine neue über
   - **Löschen als Tombstone:** **Autor** (eigene), **Kurs-Admin** (alle im Kurs), **Klassen-Admin** (alle). Die Nachricht verschwindet nicht, sondern zeigt einen grauen Platzhalter „Diese Nachricht wurde gelöscht" (Ban-Icon); Löschen ist **technisch ein `update`** (`deleted:true` + Text geleert), **kein** Hard-Delete. Bestätigung über `ConfirmDialog`.
 - Der echte Hard-`delete` einzelner Nachrichten bleibt (wie bisher) allein der **Lösch-Kaskade** vorbehalten.
 
+### Ankündigungen (Juli 2026)
+Der einzige **klassenweite** Kanal – alles andere im Projekt ist kurs-skopiert. Gedacht für Organisatorisches („Klassenfahrt", „Wandertag fällt aus"), das sonst in irgendeinem Kurs-Chat landet, wo es die halbe Klasse nie sieht.
+
+- **Veröffentlichen nur Klassen-Admins** (`AnkuendigungFormModal`): Titel, Nachricht, optional **Anhang** (PDF/Bild, max. 10 MB, gleiche Upload-Kette wie `UploadModal` – nur Storage-Pfad `klassen/{k}/ankuendigungen/…`) und optional ein **Termin**.
+- **Termin = Zeitraum:** `{ von, bis?, zeit?, titel }`. Erscheint an **jedem Tag des Zeitraums** im Kalender (Woche unter dem Tages-Header, Monat in der Tageszelle) als Pill in **Akzentfarbe mit Megafon-Icon** – bewusst anders als die kursfarbenen Prüfungs-Pills, weil der Termin der Klasse gehört und keinem Kurs. Mehrtägiges wie eine Klassenfahrt ist damit ein Eintrag statt fünf.
+- **Anzeige beim nächsten Öffnen:** ungelesene Ankündigungen erscheinen als **Modal** (`AnkuendigungPopup`), mehrere nacheinander („Noch 2 weitere"). „Verstanden" schreibt die uid in **`gelesenVon`** – serverseitig, gilt also auf allen Geräten. Der **Autor** steht von Anfang an in `gelesenVon` (sonst poppt ihm die eigene Ankündigung direkt nach dem Veröffentlichen ins Gesicht – gleiche Haltung wie „eigene Uploads nicht melden").
+- **Danach weiter sichtbar:** oben im Glocken-Panel (die letzten 5, ungelesene hervorgehoben) und auf der eigenen Seite **`/ankuendigungen`** mit Tabs **Aktuell** (letzte 30 Tage) / **Archiv**. Der Glocken-Badge zählt Materialien **und** ungelesene Ankündigungen; „Alle gelesen" wirkt weiterhin **nur** auf Materialien (Ankündigungen quittiert man einzeln).
+- **Bearbeiten (Klassen-Admins):** Stift im Detail-Modal öffnet dasselbe Formular im Bearbeiten-Modus (`ank`-Prop). Änderbar sind Titel, Text, Zielgruppe, Termin und der **Anhang** (ersetzen oder entfernen). Jede Bearbeitung setzt **`editedAt`** → „bearbeitet"-Marker mit Pencil-Icon in Detail-Modal und Karte (Muster aus dem Chat). Standardmäßig **still**; das Häkchen **„Alle erneut benachrichtigen"** setzt `gelesenVon` auf den Bearbeitenden zurück, sodass das Popup bei allen anderen erneut erscheint. Details + Fallstricke in §9.
+- **Zielgruppe:** standardmäßig **alle Kursmitglieder = ganze Klasse**. Im Formular öffnet „Ändern" eine Kurs-Häkchenliste (`ZielgruppeStep`, Optik wie `KurswahlModal`, aber rein lokaler State); wer Kurse abwählt, erreicht nur noch Mitglieder von **mindestens einem** der gewählten Kurse. Sind **alle** Kurse gewählt, wird `kursIds: null` gespeichert (= ganze Klasse) – sonst fielen Mitglieder raus, die in **keinem** Kurs sind.
+- ⚠️ **`kursIds` ist ein Zielgruppen-Filter, keine Zugriffsschranke.** Die Read-Rule ist `isMember(klasseId)`; gefiltert wird clientseitig in **`sichtbarFuer()`** (`lib/ankuendigungActions.js`, die einzige Stelle). Das ist exakt die Linie, die Materialien/HAs/Prüfungen/Chat schon fahren – auch die darf per Rules jedes Klassenmitglied lesen, die UI filtert nach Kursmitgliedschaft. Eine echte Rules-Prüfung bräuchte einen `get()` je Kurs.
+- **Archiv nach 30 Tagen** (`ARCHIV_AB_TAGEN`), **Selbstlöschung nach 90 Tagen** (`RETENTION_DAYS`) inkl. Storage-Datei über den täglichen Vercel-Cron `api/purge-ankuendigungen.js`. Beide Fristen laufen ab **`bezugsZeit`** = dem späteren aus Erstelldatum und Terminende, damit eine früh angekündigte Klassenfahrt nicht im Archiv landet, bevor sie stattgefunden hat. Details in §9.
+
 ### Benachrichtigungen
 - 🔔 in der Sidebar (Desktop) bzw. TopBar (mobil) mit rotem Zähler-Badge
-- Slide-over-Panel: neue Materialien **seit letztem „Alle gelesen"**, gruppiert nach Kurs, mit Typ-Tag, Autor, relativer Zeit; Klick navigiert zum Kurs
+- Slide-over-Panel: **Ankündigungen** (oben, s. o.) + neue Materialien **seit letztem „Alle gelesen"**, gruppiert nach Kurs, mit Typ-Tag, Autor, relativer Zeit; Klick navigiert zum Kurs
 - `localStorage`-Key `classsync_lastSeen_{uid}`; Badge bleibt bis explizit „✓ Alle gelesen"
 - **Eigene Uploads werden nicht gemeldet** (bewusste Verbesserung ggü. v1)
+- ⚠️ Die beiden Mechaniken sind **absichtlich getrennt**: Materialien = `localStorage`-`lastSeen` (gerätelokal, „seit wann war ich weg"), Ankündigungen = `gelesenVon` am Doc (geräteübergreifend, „habe ich das quittiert"). Zusammengezählt wird erst in der UI (`glockenBadge` in `AppShell`), deshalb bleibt der `NotificationContext` unverändert.
 
 ### Kalender (Stundenplan integriert)
 - Ein einziger Menüpunkt **Kalender** mit Woche/Monat-Toggle (`KalenderPage`). Ein früher getrennter „Stundenplan"-Punkt wurde hier eingegliedert, weil die Wochenansicht ihn inhaltlich vollständig abdeckt; `/stundenplan` leitet per Redirect auf `/kalender` (alte Bookmarks).
   - *Woche:* echtes Datum (Mo–Fr der gewählten KW), Navigation ‹ Heute ›, KW-Anzeige, Heute-Highlight, Kursblöcke aus den `zeiten`, **Prüfungs-Pills unter dem Tages-Header**
   - *Monat:* Raster mit **KW-Spalte**, Nachbarmonatstage abgeblendet, Heute-Highlight, Prüfungs-Pills in Kursfarbe, **Legende** der Kurse mit Prüfungen im Monat
+  - **Termine aus Ankündigungen** (beide Ansichten): Pill in **Akzentfarbe mit Megafon-Icon**, an jedem Tag des Zeitraums; in der Monats-Legende als „Ankündigung". Datenquelle ist der `AnkuendigungenContext` (klassenweit), **nicht** `useAcrossKurse` – der Termin hängt an der Klasse, nicht an einem Kurs
 - Kursblöcke minutengenau via `WeekGrid.jsx`; Zeitraster dynamisch: früheste Startzeit (abgerundet, max. 8:00) bis späteste Endzeit + 30 min (min. 16:00); Tages-Header sticky, nur das Raster scrollt
 - Datum-Parsing unterstützt `YYYY-MM-DD` **und** `DD.MM.YYYY` (`parseDatum()`)
 
@@ -198,7 +213,7 @@ Beide Gefahrenzonen nutzen dieselbe Komponente (`DangerCard`) und sitzen jeweils
 ClassSync Fable/
 ├── index.html                      ← PWA-Meta, Inter, CSS-Reset + Keyframes, #root { zoom: var(--cs-scale) }
 ├── vite.config.js                  ← react() + VitePWA (Manifest, workbox.navigateFallbackDenylist [/^\/api/])
-├── vercel.json                     ← SPA-Rewrite: alle Pfade → /index.html, /api/* per Negative-Lookahead ausgenommen
+├── vercel.json                     ← SPA-Rewrite: alle Pfade → /index.html, /api/* per Negative-Lookahead ausgenommen; **crons**: täglich /api/purge-ankuendigungen
 ├── package.json
 ├── firestore.rules                 ← im Repo versioniert; deployen: Firebase Console → Firestore → Regeln
 ├── storage.rules                   ← dito (Console → Storage → Rules)
@@ -206,8 +221,9 @@ ClassSync Fable/
 ├── .claude/launch.json             ← Dev-Server-Config für Claude Code (npm run dev, Port 5173)
 ├── api/                            ← Vercel Serverless Functions
 │   ├── auth-email.js               ← Verify/Reset/ChangeEmail-Mail: Admin-SDK erzeugt Firebase-Action-Link → Versand via Resend (ChangeEmail mit Vorab-Check „Adresse frei?")
+│   ├── purge-ankuendigungen.js     ← **NEU**: Vercel-Cron, löscht abgelaufene Ankündigungen (expiresAt) + Storage-Anhänge; Bearer-CRON_SECRET-Schutz. Exportiert purgeAbgelaufene() separat für den Lokaltest
 │   └── _emailTemplates.js          ← gebrandete HTML-Mails (Verify + Reset + ChangeEmail), Inline-HTML/Tabellen-Layout
-├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy: verify|reset|changeEmail)
+├── scripts/                        ← backfill-klasseids.mjs (einmalige Feld-Migration) · test-resend.mjs (lokaler Auth-Mail-Test ohne Deploy: verify|reset|changeEmail) · test-purge.mjs (Ankündigungs-Purge lokal, --dry-run)
 ├── public/                         ← favicon.svg, icon-16/32/180/192/512.png, icons.svg
 └── src/
     ├── main.jsx                    ← Hostname-Switch: app.* ODER localhost → <App/>, sonst <Landing/>; ?landing=1 = Landing-Vorschau lokal, **?app=1 = App auf Preview-Domains erzwingen** (s. §9)
@@ -222,13 +238,15 @@ ClassSync Fable/
     │   ├── useAcrossKurse.js       ← Hook: eine Subcollection über ALLE eigenen Kurse (für Übersicht/Kalender/Bibliothek), Docs um kurs-Objekt ergänzt; **`.ready`-Flag an der Liste** (alle Listener haben geliefert) für Aufrufer, die aus einem *fehlenden* Doc schließen
     │   ├── useSammlungen.js        ← Hook: Live-Listener auf Sammlungen, in denen ich Mitglied bin; getrennt nach meine (owner) / geteilt
     │   ├── sammlungActions.js      ← create/rename/delete, addItem/removeItem, setSammlungMembers, leaveSammlung, itemFromMaterial, **setSammlungPruefung/pruefungRefFrom**
+    │   ├── ankuendigungActions.js  ← **NEU**: RETENTION_DAYS/ARCHIV_AB_TAGEN, createAnkuendigung (setzt expiresAt + gelesenVon:[autor]), **updateAnkuendigung** (rechnet expiresAt neu, setzt editedAt, tauscht/entfernt den Anhang), markGelesen, deleteAnkuendigung (Storage+Doc), **sichtbarFuer** (Zielgruppen-Filter – die einzige Stelle!), istGelesen, terminEndeMs/**bezugsZeit**, terminTage, terminLabel
     │   └── useMediaQuery.js        ← useIsMobile (<768px), **useIsTablet (768–1199px)**, useIsWide (≥1200px); nutzt jetzt die MOBILE_/WIDE_BREAKPOINT-Konstanten aus theme.js
     ├── context/
     │   ├── AuthContext.jsx         ← Firebase Auth + Live-Profil (onSnapshot users/{uid}); register (klasseIds:[]/activeKlasseId:null) + **Lazy-Migration** Alt-klasseId→klasseIds; login/logout/resetPassword/updateProfile; emailVerified-State + sendVerification/reloadVerification; **changeEmail** (Reauth + Resend/DEV-Fallback) + **users.email-Sync** nach Wechsel; authErrorText
     │   ├── MembershipsContext.jsx  ← **NEU**: beobachtet ALLE eigenen Klassen (klasseIds). Liefert myClasses (Wechsler/Profil), openMigrations/pendingMigrations (Einladungen), und wirft bei Ban/Löschung klassenübergreifend selbst raus (arrayRemove aus klasseIds + activeKlasseId neu wählen)
     │   ├── ThemeContext.jsx        ← mode, toggle, t (Token-Objekt) + **scale/scalePref/setScalePref** (UI-Skalierung, setzt `--cs-scale` am documentElement)
     │   ├── KlasseContext.jsx       ← Listener auf die **aktive** Klasse (klasse=null bei gelöscht/gesperrt; Eviction macht jetzt MembershipsContext), Kurse-Listener; meineKurse, isKlassenAdmin, canManageKurs
-    │   └── NotificationContext.jsx ← Material-Listener pro eigenem Kurs der aktiven Klasse, lastSeen, Dedupe per ID, grouped, markAllRead
+    │   ├── NotificationContext.jsx ← Material-Listener pro eigenem Kurs der aktiven Klasse, lastSeen, Dedupe per ID, grouped, markAllRead
+    │   └── AnkuendigungenContext.jsx ← **NEU**: ein Listener auf klassen/{id}/ankuendigungen, bereits per `sichtbarFuer` auf die eigene Zielgruppe gefiltert. Liefert alle/ungelesene/aktuelle/archiv + termineByISO (Kalender). Kein Client-Purge – das macht der Cron
     ├── styles/theme.js             ← themes.light/dark (Tokens), radius, SIDEBAR_WIDTH, Breakpoints, PAGE_PAD, UI_SCALES + **vhScaled/vwScaled** (Viewport-Einheiten gegen den zoom) und **safeInset/safePad/safeExtra** (Safe-Area, s. §9)
     ├── components/
     │   ├── ui/UI.jsx               ← Btn, IconButton, Input, Modal, ModalHeader, CloseButton, Pill, Tag, Divider, SectionTitle, Spinner, Empty, Card, LogoMark
@@ -236,12 +254,12 @@ ClassSync Fable/
     │   ├── ui/CourseAvatar.jsx     ← farbiges Kurs-Monogramm (ersetzt Emoji-Icons)
     │   ├── ui/DateiIcon.jsx        ← PDF/Bild/Notiz-Icon (Lucide)
     │   ├── layout/
-    │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes (inkl. /bibliothek), Mobile-Drawer, MigrationBanner, öffnet Kurswahl-/KursForm-/AddKlasse-/Notification-Overlays
-    │   │   ├── Sidebar.jsx         ← Logo + **Klassen-Switcher-Dropdown** (myClasses, aktive ✓, „Klasse hinzufügen"), Nav (Übersicht, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke unten
+    │   │   ├── AppShell.jsx        ← Sidebar + Main, Routes (inkl. /bibliothek, /ankuendigungen), Mobile-Drawer, MigrationBanner, **AnkuendigungPopup**, öffnet Kurswahl-/KursForm-/AddKlasse-/AnkuendigungForm-/Notification-Overlays; bündelt den **glockenBadge** (Materialien + ungelesene Ankündigungen)
+    │   │   ├── Sidebar.jsx         ← Logo + **Klassen-Switcher-Dropdown** (myClasses, aktive ✓, „Klasse hinzufügen"), Nav (Übersicht, **Ankündigungen** mit Akzent-Badge, Bibliothek, Kalender), Kursliste (+ Kurs, Kurse verwalten), Profil/Glocke unten
     │   │   ├── MigrationBanner.jsx ← **NEU**: offene Schuljahres-Einladungen (pendingMigrations) mit „Beitreten"/„Später"
     │   │   ├── AuthLayout.jsx      ← zentrierte Karte für Login/Register/Onboarding/Setup; exportiert Logo
     │   │   ├── PageHeader.jsx      ← Seitenkopf (Icon, Titel, Untertitel, Aktion)
-    │   │   └── NotificationPanel.jsx ← Slide-over rechts, gruppierte neue Materialien, „Alle gelesen"
+    │   │   └── NotificationPanel.jsx ← Slide-over rechts: **Ankündigungen** (max. 5, „Alle anzeigen") + gruppierte neue Materialien, „Alle gelesen" (nur Materialien)
     │   ├── kurs/
     │   │   ├── MaterialGrid.jsx    ← Filter-Pills + Suche + Upload-Button + Karten-Grid + Modals
     │   │   ├── MaterialCard.jsx    ← Karte mit Thumbnail, Typ-Tag, Like, Löschen; optionale Props showKurs / onAddToSammlung (Bibliothek)
@@ -263,6 +281,12 @@ ClassSync Fable/
     │   │   ├── SammlungDetailModal.jsx ← Sammlung öffnen: Material-Grid, entfernen, umbenennen, Prüfung verknüpfen, teilen, löschen/verlassen
     │   │   ├── AddToSammlungModal.jsx  ← Material zu Sammlung(en) hinzufügen/entfernen + „Neue Sammlung"
     │   │   └── ShareSammlungModal.jsx  ← Klassenmitglieder für Freigabe an-/abwählen
+    │   ├── ankuendigungen/         ← **NEU** (Juli 2026): klassenweite Ankündigungen, s. §3/§9
+    │   │   ├── AnkuendigungCard.jsx     ← Listeneintrag (Megafon-Avatar, Termin-Pill, Datei-Chip, Zielgruppen-Tag); `compact` fürs Glocken-Panel
+    │   │   ├── AnkuendigungModal.jsx    ← Detailansicht (Text, Termin-Block, PDF-iframe/Bild/Download, **Stift** + Löschen für Admins, „bearbeitet"-Marker). `queue`-Modus = Login-Popup mit „Verstanden"
+    │   │   ├── AnkuendigungFormModal.jsx ← Verfassen **und Bearbeiten** (`ank`-Prop); `step: "form" | "zielgruppe"` **im selben Modal** (kein Nesting). Im Bearbeiten-Modus: Anhang ersetzen/entfernen + „Alle erneut benachrichtigen". Enthält `CheckRow` (Häkchen im App-Stil statt eckiger Browser-Checkbox)
+    │   │   ├── ZielgruppeStep.jsx       ← Kurs-Häkchenliste (Optik wie KurswahlModal), rein lokaler State, zeigt „x Mitglieder erreicht"
+    │   │   └── AnkuendigungPopup.jsx    ← zeigt ungelesene nacheinander; lokaler Set als Sicherheitsnetz, falls der gelesenVon-Write scheitert
     │   ├── profil/                 ← **NEU** (Juli 2026): Bausteine der Profilseite, s. §9 „Profilseite"
     │   │   ├── SettingRow.jsx      ← Einstellungszeile (Label+Hinweis links, Control rechts) + SegmentedControl (Design, UI-Größe)
     │   │   ├── KontoTab.jsx        ← Tab „Konto": Nickname-Form, E-Mail, Design, UI-Größe, Abmelden, Account-Gefahrenzone
@@ -287,16 +311,17 @@ ClassSync Fable/
         ├── VerifyEmail.jsx         ← E-Mail-Bestätigungs-Screen (harte Sperre): Auto-Versand, „Ich habe bestätigt" (reload), Resend mit Cooldown, Abmelden
         ├── Onboarding.jsx          ← Klasse erstellen/beitreten (klassenlos); nutzt KlasseForm, re-exportiert KURSWAHL_FLAG; **Abmelden + „Konto löschen"** (DeleteAccountModal, damit auch klassenlose Nutzer löschen können)
         ├── UebersichtPage.jsx      ← Startseite „/" (HAs + Prüfungen + neueste Materialien)
+        ├── AnkuendigungenPage.jsx  ← **NEU**: /ankuendigungen – Tabs Aktuell/Archiv, „Neue Ankündigung" nur für Klassen-Admins
         ├── BibliothekPage.jsx      ← /bibliothek – kursübergreifende Materialsicht (Filter) + Sammlungen-Tab
         ├── KursPage.jsx            ← /kurs/:kursId – Header (inkl. Mitglieder-Button), Tabs, MaterialGrid, HA/Prüfungen/Chat
         ├── KalenderPage.jsx        ← /kalender (Woche/Monat; Stundenplan integriert)
         └── ProfilPage.jsx          ← /profil – schlanker Container: Tab-State (Konto/Klassen/Mitglieder), der `mitglieder`-Listener und **alle** Modals/ConfirmDialogs. Der sichtbare Inhalt liegt in `components/profil/`
 ```
 
-**Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen). `test-resend.mjs` — lokaler Auth-Mail-Test (`verify|reset|changeEmail`) über Admin-SDK + Resend ohne Deploy (s. §9 E-Mail-Adresse ändern).
+**Skripte (`scripts/`)**: `backfill-klasseids.mjs` — einmaliges Firebase-Admin-Skript, das für alle bestehenden User `klasseId → klasseIds[]`/`activeKlasseId` nachträgt (s. §9 Multi-Klassen). `test-resend.mjs` — lokaler Auth-Mail-Test (`verify|reset|changeEmail`) über Admin-SDK + Resend ohne Deploy (s. §9 E-Mail-Adresse ändern). `test-purge.mjs` — fährt den Ankündigungs-Purge lokal gegen das echte Firestore (`--dry-run` zählt nur), s. §9 Ankündigungen.
 
-**Routen:** `/` Übersicht · `/bibliothek` · `/kurs/:kursId` · `/kalender` · `/profil` · `/stundenplan` → Redirect auf `/kalender` · `*` → `/`
-**Sidebar-Nav:** Übersicht · Bibliothek · Kalender (+ Kursliste, Profil/Glocke unten)
+**Routen:** `/` Übersicht · `/ankuendigungen` · `/bibliothek` · `/kurs/:kursId` · `/kalender` · `/profil` · `/stundenplan` → Redirect auf `/kalender` · `*` → `/`
+**Sidebar-Nav:** Übersicht · Ankündigungen · Bibliothek · Kalender (+ Kursliste, Profil/Glocke unten)
 
 ---
 
@@ -380,9 +405,33 @@ ClassSync Fable/
                                                  (dieselbe Referenz-Mechanik wie items; nur der
                                                   Owner darf sie setzen)
   createdAt:   number
+
+/klassen/{klasseId}/ankuendigungen/{ankId}   ← NEU: klassenweiter Admin-Broadcast
+  titel:       string
+  text:        string
+  autor:       string            ← Nickname, denormalisiert
+  autorId:     string
+  kursIds:     string[] | null   ← null = ganze Klasse. Sonst ZIELGRUPPEN-Filter:
+                                   wer in mind. einem dieser Kurse ist, sieht es.
+                                   KEINE Zugriffsschranke (s. §3/§8)
+  kursNamen:   string[] | null   ← denormalisiert für „Nur für: Mathe, Bio"
+                                   (hält, wenn ein Kurs später gelöscht wird)
+  dateiUrl:    string | null
+  storagePath: string | null     ← Anhang; vom Cron zum Löschen gebraucht
+  dateiTyp:    "PDF"|"Bild"|null
+  dateiName:   string | null
+  termin:      { von:"YYYY-MM-DD", bis:"YYYY-MM-DD"|null,
+                 zeit:"HH:MM"|null, titel:string } | null   ← Kalender-Eintrag
+  gelesenVon:  string[]          ← quittiert; enthält beim Anlegen bereits [autorId]
+  editedAt:    number            ← NEU, optional: gesetzt beim Bearbeiten (= „bearbeitet"-Marker)
+  createdAt:   number            ← Date.now() (kein serverTimestamp – s. u.)
+  expiresAt:   number            ← createdAt + 90 Tage; der Cron löscht danach
 ```
 
+⚠️ **`createdAt: Date.now()` statt `serverTimestamp()`** ist bei Ankündigungen Absicht: `expiresAt` muss beim Anlegen im selben Moment feststehen und für die `collectionGroup`-Query des Cron-Endpoints vergleichbar sein. Dasselbe Muster wie `sammlungen`/`klassen`.
+
 **Storage-Pfad:** `klassen/{klasseId}/kurse/{kursId}/{timestamp}_{filename}`
+**Storage-Pfad Ankündigungs-Anhänge:** `klassen/{klasseId}/ankuendigungen/{timestamp}_{filename}` (Klassenebene, eigener Rules-Block!)
 
 ---
 
@@ -418,6 +467,11 @@ ClassSync Fable/
 | Fremde Nachricht bearbeiten | ❌ | ❌ | ❌ |
 | Eigene Nachricht löschen (Tombstone) | ✅ | ✅ | ✅ |
 | Fremde Nachricht löschen (Tombstone) | ❌ | ✅ (im eigenen Kurs) | ✅ (alle) |
+| Ankündigung veröffentlichen | ❌ | ❌ | ✅ |
+| Ankündigung bearbeiten | ❌ | ❌ | ✅ (auch fremde) |
+| Ankündigung lesen | ✅ (wenn Zielgruppe) | ✅ (dito) | ✅ (dito) |
+| Ankündigung quittieren (`gelesenVon`) | ✅ | ✅ | ✅ |
+| Ankündigung löschen | ❌ | ❌ | ✅ |
 | User zum Admin machen | ❌ | ❌ | ✅ |
 | Mitglied aus Klasse sperren/entsperren | ❌ | ❌ | ✅ |
 | Klasse selbst verlassen | ✅ | ✅ | ✅ (außer letzter Admin) |
@@ -442,11 +496,15 @@ Vollständig in [`firestore.rules`](firestore.rules) und [`storage.rules`](stora
 - `pruefungen`: create mit `autorId == uid`; update/delete Klassen-Admin/Kurs-Admin/Autor
 - `chat`: create mit `autorId == uid`; **update** zwei Pfade — (a) Autor bearbeitet eigenen Text: `hasOnly(['text','editedAt'])` und nur solange `deleted != true`; (b) Tombstone-Löschen durch Autor/Kurs-Admin/Klassen-Admin: `deleted == true` und `hasOnly(['deleted','text'])`; **delete** (Hard) weiterhin Klassen-Admin/Kurs-Admin (**nur** für die Lösch-Kaskade)
 - `sammlungen`: **read** Sammlungs-Mitglieder (`uid in memberIds`) **oder Klassen-Admin** (Letzterer nötig, damit die Lösch-Kaskade alle Sammlungen auflisten kann – s. ⚠️ unten); create mit `ownerId == uid` und `memberIds == [uid]`; update entweder Owner (alles) oder Sammlungs-Mitglied, aber nur `hasOnly(['items','memberIds'])` (Kollaboration + Selbst-Verlassen); delete Owner **oder** Klassen-Admin (Letzterer nur für die Lösch-Kaskade)
+- `ankuendigungen`: **read** jedes Klassenmitglied (`isMember`); create nur **Klassen-Admin** mit `autorId == uid`; **update** Klassen-Admin (alles) **oder** jedes Mitglied mit `hasOnly(['gelesenVon'])` (Quittieren – Muster wie `likes`/`doneBy`); delete Klassen-Admin (manuelles Löschen **und** Lösch-Kaskade). ⚠️ `kursIds` wird in den Rules **bewusst nicht** geprüft – s. §3 „Ankündigungen"
 - **storage.rules**: Klassen-Check per cross-service `firestore.get()` auf das User-Doc, **`klasseId in ...klasseIds`** (Multi-Klassen); create zusätzlich ≤ 10 MB und contentType PDF/`image/*`; update false
+- **storage.rules, zweiter Block `klassen/{klasseId}/ankuendigungen/{fileName}`**: read wie oben (jedes Klassenmitglied), **create/delete nur Klassen-Admins** – zweiter cross-service `firestore.get()` auf das **Klassen**-Doc (`request.auth.uid in ....adminIds`). ⚠️ Der bestehende Block matcht **nur** `.../kurse/{kursId}/{fileName}`; ohne den neuen Block scheitert jeder Ankündigungs-Upload
 
 ⚠️ **Bekannter, behobener Bug (nicht wieder einführen!):** In v1 der Rules war `chat: delete false` absolut – dadurch scheiterte die Lösch-Kaskade von Klasse/Kurs mit permission-denied, nachdem Materialien/HAs/Prüfungen schon gelöscht waren. Fix: `isKursAdmin`-Helper + delete-Erlaubnis für Admins in allen Subcollections.
 
 ⚠️ **Zweiter behobener Kaskaden-Bug (Juli 2026):** Die `sammlungen`-**read**-Rule war auf Sammlungs-Mitglieder beschränkt; die Lösch-Kaskade (`deleteKlasse`) liest aber per `getDocs` **alle** Sammlungen der Klasse → `permission-denied`, sobald eine Sammlung einem anderen Mitglied gehörte. Fix: `|| isKlassenAdmin(klasseId)` in der Sammlungen-read-Rule. Man kann nur löschen, was man auflisten (lesen) darf – bei jeder cascade-gelöschten Subcollection also read **und** delete für Admins sicherstellen.
+
+⚠️ **Dritte cascade-gelöschte Subcollection (Juli 2026):** `ankuendigungen` hängt wie `sammlungen` auf **Klassenebene** und muss in `deleteKlasse` mitgelöscht werden – inklusive des Storage-Ordners `klassen/{id}/ankuendigungen` (eigenes `listAll`, der Kurs-`listAll` erwischt ihn nicht). Read+Delete für Klassen-Admins sind in der Rule oben abgedeckt; der Merksatz „man kann nur löschen, was man auflisten darf" gilt unverändert.
 
 ⚠️ **IAM-Voraussetzung:** Das Storage-Dienstkonto (`service-…@gcp-sa-firebasestorage.iam.gserviceaccount.com`) braucht die Rolle **Cloud Datastore User**, sonst schlägt jedes `firestore.get()` in den Storage-Rules fehl. Ist für `classsync-v2` gesetzt.
 
@@ -607,8 +665,24 @@ updateDoc(kursRef, { memberIds: join ? arrayUnion(uid) : arrayRemove(uid) });
 ```
 `MaterialCard`/`MaterialPreviewModal` sind über optionale Props (`showKurs`, `onAddToSammlung`) rückwärtskompatibel erweitert – die KursPage nutzt sie ohne diese Props und bleibt unverändert.
 
+### Ankündigungen (`lib/ankuendigungActions.js`, `AnkuendigungenContext`, `api/purge-ankuendigungen.js`)
+- **Ein Listener statt N:** Ankündigungen hängen an der Klasse, deshalb reicht ein `onSnapshot` auf `klassen/{id}/ankuendigungen` – anders als bei Materialien (ein Listener je Kurs). Der Context filtert direkt beim Reinkommen über `sichtbarFuer` und liefert `alle/ungelesene/aktuelle/archiv/termineByISO`.
+- **Zielgruppe an genau einer Stelle:** `sichtbarFuer(ank, meineKursIds)` in `ankuendigungActions.js`. Wer die Regel woanders nachbaut, bekommt garantiert Abweichungen zwischen Popup, Glocke, Seite und Kalender. **Alle Kurse gewählt → `kursIds: null`** speichern, nicht die vollständige Liste – sonst fielen Mitglieder ohne Kurs raus, obwohl „an alle" gemeint war.
+- **Zwei Gelesen-Mechaniken nebeneinander:** Materialien nutzen weiterhin `localStorage`-`lastSeen` (gerätelokal), Ankündigungen `gelesenVon` am Doc (geräteübergreifend, weil eine Quittung „ich habe das gesehen" heißt und nicht „auf diesem Gerät"). Zusammengezählt wird erst in `AppShell` (`glockenBadge`); der `NotificationContext` blieb dadurch unverändert.
+- **Popup-Warteschlange:** `AnkuendigungPopup` rendert `ungelesene[0]`. „Verstanden" schreibt `gelesenVon` → das Doc fällt von selbst aus der Liste, die nächste rückt nach. Zusätzlich ein **lokaler `Set`** der weggeklickten IDs: scheitert der Write (offline), poppt die Ankündigung sonst sofort wieder auf und man kommt nicht mehr aus dem Modal.
+- **Bearbeiten (`updateAnkuendigung`):** `expiresAt` wird **immer** neu gerechnet – ein verschobener Termin muss die Frist mitverschieben. Die Datei-Felder werden nur angefasst, wenn der Anhang wirklich gewechselt/entfernt wurde (`dateiGeaendert`), sonst überschriebe ein simpler Titel-Edit sie unnötig. ⚠️ **Reihenfolge beim Ersetzen:** erst `updateDoc`, **dann** die alte Storage-Datei löschen – andersherum zeigte das Doc bei einem fehlgeschlagenen Write auf eine nicht mehr existierende Datei. Der neue Upload bekommt immer einen frischen Zeitstempel-Pfad; ein Überschreiben wäre ohnehin blockiert (`allow update: if false` in den Storage-Rules).
+- **Still bearbeiten vs. erneut benachrichtigen:** Ohne Häkchen bleibt `gelesenVon` unangetastet – wer schon quittiert hat, sieht kein Popup mehr, die Änderung ist nur am `editedAt`-Marker erkennbar. Mit Häkchen wird `gelesenVon` auf **den Bearbeitenden** gesetzt (nicht geleert): so poppt es bei allen anderen wieder auf, aber nicht bei dem, der gerade gespeichert hat. Ein anderer Admin als der ursprüngliche Autor bekommt es dadurch korrekt zu sehen.
+- **Detailansicht löst über die ID auf, nicht über einen Snapshot** (`AnkuendigungenPage`, `NotificationPanel` halten `offenId` und suchen in der Live-Liste). Mit einem festgehaltenen Objekt zeigte das Modal nach dem Speichern noch die alten Werte – und bliebe stehen, wenn die Ankündigung inzwischen gelöscht wurde.
+- **Kein verschachteltes Modal:** Die Kursauswahl läuft als `step`-Umschaltung **innerhalb** des Formular-Modals; das Bearbeiten-Formular **ersetzt** ebenso die Detailansicht, statt sich darüberzulegen. `Modal` (`UI.jsx`) setzt `document.body.style.overflow` und räumt es beim Unmount auf – schließt man das obere von zwei gestapelten Modals, scrollt der Body wieder, obwohl das untere noch offen ist. (`ConfirmDialog` über einem Modal ist die geduldete Ausnahme: er ist immer die letzte Aktion und schließt das Elternmodal gleich mit.)
+- **Termine im Kalender:** `terminTage(termin)` expandiert `von..bis` zu ISO-Tagen (Deckel bei 60 Tagen gegen vertippte Zeiträume). `WeekGrid` bekam einen **optionalen** Prop `termineByISO` – ohne den Prop rendert nichts, die Komponente bleibt rückwärtskompatibel.
+- **Fristen laufen ab `bezugsZeit(ank)`** = `max(createdAt, terminEndeMs(termin))`, nicht ab `createdAt`. `createAnkuendigung` schreibt `expiresAt` entsprechend, der Context zieht die Archiv-Grenze gegen denselben Wert – beide Fristen bleiben so automatisch synchron. `terminEndeMs` rechnet den **ganzen** letzten Tag mit (`+ TAG_MS - 1`), sonst liefe der Termin um Mitternacht des Endtages ab. Ohne Termin ändert sich nichts (`terminEndeMs` → `null` → `createdAt`). ⚠️ Der Cron liest nur das gespeicherte `expiresAt` – **ändert man die Bezugslogik, gilt sie nur für neue Ankündigungen**, alte behalten ihr altes `expiresAt`.
+- **Auto-Löschung: Vercel-Cron statt Cloud Function.** Firebase liegt zwar auf **Blaze** (Functions wären möglich), aber das Repo hat kein `firebase.json`, kein `functions/` und keinen Firebase-CLI-Deploy – dagegen mit `api/auth-email.js` bereits einen Admin-SDK-Endpoint samt Env-Vars, der bei jedem `git push` mitdeployt. `api/purge-ankuendigungen.js` iteriert über alle `klassen` und fragt je Klasse `ankuendigungen where expiresAt < jetzt` ab: **erst** die Storage-Dateien löschen (danach ist `storagePath` weg), dann die Docs in 450er-Batches. Ein clientseitiger Lazy-Purge wurde verworfen – er liefe in den Ferien nie, weil sich kein Admin einloggt.
+- ⚠️ **Warum eine Query je Klasse und keine `collectionGroup`-Query?** Firestore legt Einzelfeld-Indizes automatisch an, aber nur mit **Collection**-Scope. Eine `collectionGroup("ankuendigungen").where("expiresAt","<",…)` bräuchte zusätzlich eine von Hand angelegte **Einzelfeld-Ausnahme mit Collection-Group-Scope** – und der Anlege-Link aus der `FAILED_PRECONDITION`-Meldung führt auf die Seite für **zusammengesetzte** Indizes, die mindestens **zwei** Felder verlangt und deshalb mit „unbekannter Fehler" abbricht (in der Praxis getroffen, Juli 2026). Die N Queries kosten bei dieser Klassenzahl nichts und sparen einen Setup-Schritt, den man in einem frischen Firebase-Projekt garantiert vergisst. **Bei vielen tausend Klassen neu bewerten** – dann lohnt die Ausnahme unter Firestore → Indexes → Einzelfeld → Ausnahme hinzufügen.
+- ⚠️ **Eine manuelle Voraussetzung, sonst schlägt der Cron still fehl:** **`CRON_SECRET`** als Vercel-Env-Var. Der Endpoint ist öffentlich erreichbar und löscht Daten → ohne passenden `Authorization: Bearer`-Header **401**; fehlt die Variable ganz, **500**. Beides sieht man nur in den Vercel-Logs, nicht in der App.
+- **Lokaltest ohne Deploy:** `node scripts/test-purge.mjs --dry-run` (nur zählen) bzw. ohne Flag (wirklich löschen) – liest `.env.local` und ruft dieselbe `purgeAbgelaufene()` auf, die der Endpoint nutzt. Zum Provozieren `expiresAt` einer Test-Ankündigung in der Console auf einen Wert in der Vergangenheit setzen.
+
 ### Lösch-Kaskade (`lib/klasseActions.js`)
-`deleteKurs`: Storage-`listAll` + `deleteObject` (try/catch) → Subcollections `materialien/hausaufgaben/pruefungen/chat` in 450er-`writeBatch`es → Kurs-Doc. `deleteKlasse`: alle Kurse via `deleteKurs` → **Sammlungen-Subcollection** → Klassen-Doc. Reihenfolge wichtig: Kurs-/Klassen-Doc **zuletzt**, weil die Rules (`isKursAdmin`/`isKlassenAdmin`) sie per `get()` noch lesen müssen. **Jede Stufe wirft mit Kontext** (`stepError`, z. B. „Lesen von klassen/…/sammlungen (permission-denied)") – so ist ein Rule-Problem sofort lokalisierbar. Merksatz: **man kann nur löschen, was man auch lesen (auflisten) darf** → für jede cascade-gelöschte Subcollection Admin-**read** UND -**delete** in den Rules sicherstellen (s. §8, Sammlungen-Bug). `ConfirmDialog` schluckt Fehler → `ProfilPage` zeigt die Meldung selbst in der Gefahrenzone an.
+`deleteKurs`: Storage-`listAll` + `deleteObject` (try/catch) → Subcollections `materialien/hausaufgaben/pruefungen/chat` in 450er-`writeBatch`es → Kurs-Doc. `deleteKlasse`: alle Kurse via `deleteKurs` → Storage-`listAll` auf `klassen/{id}/ankuendigungen` → **Sammlungen- und Ankündigungen-Subcollection** → Klassen-Doc. Reihenfolge wichtig: Kurs-/Klassen-Doc **zuletzt**, weil die Rules (`isKursAdmin`/`isKlassenAdmin`) sie per `get()` noch lesen müssen. **Jede Stufe wirft mit Kontext** (`stepError`, z. B. „Lesen von klassen/…/sammlungen (permission-denied)") – so ist ein Rule-Problem sofort lokalisierbar. Merksatz: **man kann nur löschen, was man auch lesen (auflisten) darf** → für jede cascade-gelöschte Subcollection Admin-**read** UND -**delete** in den Rules sicherstellen (s. §8, Sammlungen-Bug). `ConfirmDialog` schluckt Fehler → `ProfilPage` zeigt die Meldung selbst in der Gefahrenzone an.
 
 ### Rauswurf bei gelöschter/gesperrter Klasse (Multi-Klassen)
 `MembershipsContext` beobachtet **alle** eigenen Klassen-Docs; existiert eines nicht mehr **oder** steht die eigene uid in dessen `bannedIds` → `updateProfile({ klasseIds: arrayRemove(id), activeKlasseId: … })`. Betrifft es die aktive Klasse, greift danach eine verbleibende oder das Onboarding. Funktioniert live für alle eingeloggten Mitglieder. (Der `KlasseContext` setzt für die **aktive** Klasse nur noch `klasse=null`; die Eviction liegt zentral im MembershipsContext.)
@@ -663,7 +737,8 @@ Die Seite war bis Juli 2026 **508 Zeilen in einer Datei**: sechs gestapelte Kart
 - **E-Mail-Wechsel** nur auf **freie** Adressen (Firebase-Vorgabe); in DEV verweigert Firebase belegte Adressen still (kein Fehler/keine Mail).
 - **UI-Skalierung ist `zoom`-basiert**, nicht rem: Sie skaliert alles proportional, macht das Layout aber nicht *anders* (keine anderen Umbrüche, keine größeren Touch-Ziele relativ zum Rest). Die **Landingpage skaliert mit**, weil sie sich `#root` mit der App teilt – auf dem Tablet ist also auch `classsync.de` 15 % größer. Bei „Groß" (1.3x) sinkt die nutzbare Layout-Breite spürbar (s. §9, `matchMedia`-Hinweis). Ein echter Token-/rem-Umbau bleibt die saubere, aber teure Alternative (700+ Literale)
 - **Schmale Handy-Bildschirme sind noch nicht gut** (Stand Juli 2026, bewusst zurückgestellt). Die App ist auf iPad/Desktop optimiert; unter 768px greift zwar der Drawer-Modus, aber Dichte und Layout sind dort nicht durchgestaltet. Die Safe-Area-Werte des iPhone (Header 59px, Fußzeile 34px) sind bisher nur **gerechnet, nicht auf dem Gerät geprüft** – sie können nicht zu klein ausfallen (`max()` garantiert ≥ Inset), aber der Inhalt sitzt exakt auf der sicheren Kante ohne optischen Puffer. Sinnvoll zusammen mit einer echten Handy-Überarbeitung anzugehen, nicht isoliert
-- **Keine Push-Notifications** – nur In-App (FCM wäre der nächste Schritt, braucht Blaze-Plan)
+- **Keine Push-Notifications** – nur In-App. **Der Blaze-Blocker ist weg** (das Projekt liegt auf Blaze), FCM wäre also machbar und wurde beim Ankündigungs-Feature **bewusst zurückgestellt**: Service-Worker, Berechtigungs-Prompt, `fcmTokens[]` am User-Doc und die iOS-Einschränkung (Push nur als Homescreen-PWA) sind ein eigenes Feature. Wenn, dann für **Materialien und Ankündigungen gemeinsam** – nicht als Anhängsel eines Zweigs. Versenden ginge über einen Admin-SDK-Endpoint (`firebase-admin/messaging`) analog zu `api/auth-email.js`, eine Cloud Function ist dafür nicht nötig.
+- **Archiv- und Ablauffrist einer Ankündigung zählen ab `bezugsZeit`** = dem späteren aus Erstelldatum und Terminende, nicht stur ab `createdAt`. Eine Klassenfahrt, die zwei Monate im Voraus angekündigt wird, bleibt dadurch bis 30 Tage **nach** der Fahrt unter „Aktuell" und wird erst 90 Tage danach gelöscht. Ohne das wäre die Nachricht verschwunden, während der Termin noch im Kalender stand.
 - **Keine Offline-Unterstützung**
 - **Max. Dateigröße 10 MB** (`MAX_MB` in `UploadModal.jsx` + Storage-Rules – beide Stellen ändern!)
 - **Sammlungen:** `items` liegen als Array im Sammlung-Doc (klein gedacht, für Prüfungs-Bündel völlig ausreichend). Bei sehr großen Sammlungen wäre eine Subcollection sinnvoller. Verwaiste Item-Referenzen (gelöschtes Material) werden beim Auflösen als „nicht verfügbar" behandelt, nicht automatisch bereinigt.

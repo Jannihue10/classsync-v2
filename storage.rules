@@ -18,5 +18,24 @@ service firebase.storage {
         klasseId in firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
           .data.get('klasseIds', []);
     }
+
+    // Anhänge von Ankündigungen liegen auf Klassenebene (nicht unter einem Kurs) und
+    // brauchen deshalb einen eigenen Block – der obige match greift nur für .../kurse/...
+    match /klassen/{klasseId}/ankuendigungen/{fileName} {
+      allow read: if request.auth != null &&
+        klasseId in firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+          .data.get('klasseIds', []);
+      // Hochladen/Löschen nur Klassen-Admins (zweiter cross-service get auf das Klassen-Doc)
+      allow create: if request.auth != null &&
+        request.auth.uid in firestore.get(/databases/(default)/documents/klassen/$(klasseId))
+          .data.adminIds &&
+        request.resource.size <= 10 * 1024 * 1024 &&
+        (request.resource.contentType == 'application/pdf' ||
+         request.resource.contentType.matches('image/.*'));
+      allow update: if false;
+      allow delete: if request.auth != null &&
+        request.auth.uid in firestore.get(/databases/(default)/documents/klassen/$(klasseId))
+          .data.adminIds;
+    }
   }
 }
